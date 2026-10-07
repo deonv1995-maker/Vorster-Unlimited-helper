@@ -331,7 +331,9 @@ export function parsePaperJobCardText(text: string): PaperJobCardImportResult {
   const job = createEmptyJobCard();
 
   const dateMade =
-    parseSouthAfricanDate(findLabelValue(lines, ['DATE'])) ?? job.dateMade;
+    parseSouthAfricanDate(findLabelValue(lines, ['DATE'])) ??
+    parseSouthAfricanDate(normalizedText) ??
+    job.dateMade;
   const customerName = findCustomerName(lines);
   const location = findLocation(lines, customerName);
   const amountCents =
