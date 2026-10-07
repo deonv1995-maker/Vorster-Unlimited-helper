@@ -1,7 +1,7 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useState } from 'react';
 
-import type { JobCard } from '../../domain/jobCard';
+import type { JobCard, JobCardSourcePage } from '../../domain/jobCard';
 import { listJobCards, saveJobCard } from '../../data/jobCardRepository';
 
 export function useJobCards() {
@@ -34,8 +34,8 @@ export function useJobCards() {
   }, [db]);
 
   const save = useCallback(
-    async (job: JobCard) => {
-      await saveJobCard(db, job);
+    async (job: JobCard, sourcePages?: JobCardSourcePage[]) => {
+      await saveJobCard(db, job, sourcePages);
       await refresh();
     },
     [db, refresh],
