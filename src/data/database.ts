@@ -2,9 +2,14 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 export const DATABASE_NAME = 'vorster-unlimited-helper.db';
 
+interface UserVersionRow {
+  user_version: number;
+}
+
 export async function migrateDatabase(db: SQLiteDatabase) {
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
+    PRAGMA foreign_keys = ON;
 
     CREATE TABLE IF NOT EXISTS job_cards (
       id TEXT PRIMARY KEY NOT NULL,
@@ -31,7 +36,42 @@ export async function migrateDatabase(db: SQLiteDatabase) {
 
     CREATE INDEX IF NOT EXISTS idx_job_cards_status
       ON job_cards(status);
-
-    PRAGMA user_version = 1;
   `);
+
+  const versionRow = await db.getFirstAsync<UserVersionRow>('PRAGMA user_version');
+  const currentVersion = versionRow?.user_version ?? 0;
+
+  if (currentVersion < 2) {
+    const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(job_cards)');
+    const columnNames = new Set(columns.map((column) => column.name));
+
+    if (!columnNames.has('delivery_instructions')) {
+      await db.execAsync(
+        "ALTER TABLE job_cards ADD COLUMN delivery_instructions TEXT NOT NULL DEFAULT '';",
+      );
+    }
+
+    if (!columnNames.has('delivery_fee_percent')) {
+      await db.execAsync(
+        'ALTER TABLE job_cards ADD COLUMN delivery_fee_percent REAL;',
+      );
+    }
+
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS job_card_source_pages (
+        id TEXT PRIMARY KEY NOT NULL,
+        job_card_id TEXT NOT NULL,
+        page_number INTEGER NOT NULL,
+        raw_text TEXT NOT NULL,
+        captured_at TEXT NOT NULL,
+        FOREIGN KEY (job_card_id) REFERENCES job_cards(id) ON DELETE CASCADE,
+        UNIQUE (job_card_id, page_number)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_job_card_source_pages_job
+        ON job_card_source_pages(job_card_id);
+
+      PRAGMA user_version = 2;
+    `);
+  }
 }
