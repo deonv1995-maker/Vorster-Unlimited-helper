@@ -19,7 +19,7 @@ import {
   createEmptyJobCard,
   type JobCard,
 } from './src/domain/jobCard';
-import { QrJobCardScanner } from './src/features/jobCards/QrJobCardScanner';
+import { JobCardScanner } from './src/features/jobCards/JobCardScanner';
 import {
   DELIVERY_FILTERS,
   getDeliveryUrgency,
@@ -345,7 +345,7 @@ function PlannerScreen() {
         </ScrollView>
       )}
 
-      <QrJobCardScanner
+      <JobCardScanner
         visible={scannerVisible}
         onCancel={() => setScannerVisible(false)}
         onJobScanned={(job) => {
