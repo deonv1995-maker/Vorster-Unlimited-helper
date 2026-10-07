@@ -6,7 +6,8 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "android": {
-      "package": "za.co.vorsterunlimited.helper"
+      "package": "za.co.vorsterunlimited.helper",
+      "versionCode": 1
     },
     "ios": {
       "bundleIdentifier": "za.co.vorsterunlimited.helper"
@@ -30,7 +31,7 @@
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "16.0",
+            "deploymentTarget": "16.4",
             "useFrameworks": "static"
           }
         }
