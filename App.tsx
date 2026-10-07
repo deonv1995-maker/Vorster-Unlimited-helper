@@ -20,6 +20,11 @@ import {
   type JobCard,
 } from './src/domain/jobCard';
 import { useJobCards } from './src/features/jobCards/useJobCards';
+import {
+  formatLocalDate,
+  fromLocalDate,
+  toLocalDate,
+} from './src/utils/localDate';
 
 const COLUMN_WIDTHS = {
   dateMade: 112,
@@ -36,22 +41,12 @@ type PlannerFilter = 'All' | 'Active' | 'Ready' | 'Completed';
 
 const FILTERS: PlannerFilter[] = ['All', 'Active', 'Ready', 'Completed'];
 
-const formatDate = (value: string | null) => {
-  if (!value) return 'Select date';
-
-  return new Intl.DateTimeFormat('en-ZA', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(value));
-};
-
-const formatRand = (amount: number) =>
+const formatRand = (amountCents: number) =>
   new Intl.NumberFormat('en-ZA', {
     style: 'currency',
     currency: 'ZAR',
     maximumFractionDigits: 2,
-  }).format(amount);
+  }).format(amountCents / 100);
 
 const isCompleted = (job: JobCard) =>
   job.status === 'Delivered' || job.status === 'Collected';
@@ -117,7 +112,7 @@ function PlannerScreen() {
 
     await saveJob({
       ...dateJob,
-      deliveryDate: date.toISOString(),
+      deliveryDate: toLocalDate(date),
     });
 
     setDateJobId(null);
@@ -230,7 +225,7 @@ function PlannerScreen() {
                     <View key={job.id} style={styles.row}>
                       <Cell
                         width={COLUMN_WIDTHS.dateMade}
-                        text={formatDate(job.dateMade)}
+                        text={formatLocalDate(job.dateMade)}
                         onPress={openEditor}
                       />
                       <Cell
@@ -255,7 +250,7 @@ function PlannerScreen() {
                       />
                       <Cell
                         width={COLUMN_WIDTHS.amountRand}
-                        text={formatRand(job.amountRand)}
+                        text={formatRand(job.amountCents)}
                         onPress={openEditor}
                       />
                       <Pressable
@@ -264,7 +259,9 @@ function PlannerScreen() {
                         accessibilityRole="button"
                         accessibilityLabel={`Choose delivery date for ${job.referenceNumber}`}
                       >
-                        <Text style={styles.dateCellText}>{formatDate(job.deliveryDate)}</Text>
+                        <Text style={styles.dateCellText}>
+                          {formatLocalDate(job.deliveryDate)}
+                        </Text>
                       </Pressable>
                       <Cell
                         width={COLUMN_WIDTHS.status}
@@ -304,7 +301,7 @@ function PlannerScreen() {
 
       {dateJob ? (
         <DateTimePicker
-          value={dateJob.deliveryDate ? new Date(dateJob.deliveryDate) : new Date()}
+          value={dateJob.deliveryDate ? fromLocalDate(dateJob.deliveryDate) : new Date()}
           mode="date"
           presentation="dialog"
           onChange={(event, date) => {
