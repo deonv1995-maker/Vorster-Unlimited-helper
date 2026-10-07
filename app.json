@@ -10,6 +10,16 @@
     },
     "ios": {
       "bundleIdentifier": "za.co.vorsterunlimited.helper"
-    }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Vorster Unlimited Helper to scan job card QR codes.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ]
+    ]
   }
 }
