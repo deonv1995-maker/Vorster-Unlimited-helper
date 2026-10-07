@@ -15,21 +15,27 @@ import {
   View,
 } from 'react-native';
 
-import type { JobCard } from '../../domain/jobCard';
+import type { JobCard, JobCardSourcePage } from '../../domain/jobCard';
 import { parseJobCardQr } from './jobCardImport';
-import { parsePaperJobCardText } from './paperJobCardImport';
+import { parsePaperJobCardPages } from './paperJobCardImport';
 
 type ScanMode = 'paper' | 'qr';
+
+export interface JobCardScanResult {
+  job: JobCard;
+  sourcePages?: JobCardSourcePage[];
+}
 
 interface JobCardScannerProps {
   visible: boolean;
   onCancel: () => void;
-  onJobScanned: (job: JobCard) => void;
+  onJobScanned: (result: JobCardScanResult) => void;
 }
 
 interface PendingPaperResult {
-  job: JobCard;
+  job: JobCard | null;
   warnings: string[];
+  sourcePages: JobCardSourcePage[];
 }
 
 export function JobCardScanner({
@@ -43,6 +49,7 @@ export function JobCardScanner({
   const [scanLocked, setScanLocked] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [capturedPages, setCapturedPages] = useState<JobCardSourcePage[]>([]);
   const [pendingPaperResult, setPendingPaperResult] =
     useState<PendingPaperResult | null>(null);
 
@@ -52,20 +59,22 @@ export function JobCardScanner({
       setScanLocked(false);
       setProcessing(false);
       setErrorMessage('');
+      setCapturedPages([]);
       setPendingPaperResult(null);
     }
   }, [visible]);
 
-  const resetScanState = () => {
+  const resetSession = () => {
     setScanLocked(false);
     setProcessing(false);
     setErrorMessage('');
+    setCapturedPages([]);
     setPendingPaperResult(null);
   };
 
   const switchMode = (nextMode: ScanMode) => {
     setMode(nextMode);
-    resetScanState();
+    resetSession();
   };
 
   const handleBarcode = (result: BarcodeScanningResult) => {
@@ -79,10 +88,10 @@ export function JobCardScanner({
       return;
     }
 
-    onJobScanned(parsed.job);
+    onJobScanned({ job: parsed.job });
   };
 
-  const capturePaperJobCard = async () => {
+  const capturePaperPage = async () => {
     if (!cameraRef.current || processing) return;
 
     if (!isSupported()) {
@@ -106,22 +115,40 @@ export function JobCardScanner({
       }
 
       const recognition = await recognizeText(photo.uri);
-      const parsed = parsePaperJobCardText(recognition.text);
 
-      if (!parsed.ok) {
-        setErrorMessage(parsed.message);
+      if (!recognition.text.trim()) {
+        setErrorMessage(
+          'No readable text was found. Move closer, keep the page flat, and try again.',
+        );
         return;
       }
 
-      if (parsed.warnings.length) {
+      const nextPage: JobCardSourcePage = {
+        pageNumber: capturedPages.length + 1,
+        rawText: recognition.text,
+        capturedAt: new Date().toISOString(),
+      };
+      const nextPages = [...capturedPages, nextPage];
+      const parsed = parsePaperJobCardPages(
+        nextPages.map((page) => page.rawText),
+      );
+
+      setCapturedPages(nextPages);
+
+      if (!parsed.ok) {
         setPendingPaperResult({
-          job: parsed.job,
-          warnings: parsed.warnings,
+          job: null,
+          warnings: [parsed.message],
+          sourcePages: nextPages,
         });
         return;
       }
 
-      onJobScanned(parsed.job);
+      setPendingPaperResult({
+        job: parsed.job,
+        warnings: parsed.warnings,
+        sourcePages: nextPages,
+      });
     } catch {
       setErrorMessage(
         'The paper job card could not be read. Hold the phone square to the page and try again.',
@@ -129,6 +156,32 @@ export function JobCardScanner({
     } finally {
       setProcessing(false);
     }
+  };
+
+  const retakeLastPage = () => {
+    setCapturedPages((current) => current.slice(0, -1));
+    setPendingPaperResult(null);
+    setErrorMessage('');
+  };
+
+  const addAnotherPage = () => {
+    setPendingPaperResult(null);
+    setErrorMessage('');
+  };
+
+  const finishPaperScan = () => {
+    if (!pendingPaperResult?.job) {
+      setErrorMessage(
+        'The captured pages do not contain enough header information yet. Add a page with the job-card header.',
+      );
+      setPendingPaperResult(null);
+      return;
+    }
+
+    onJobScanned({
+      job: pendingPaperResult.job,
+      sourcePages: pendingPaperResult.sourcePages,
+    });
   };
 
   const cameraReady = permission?.granted === true;
@@ -196,14 +249,19 @@ export function JobCardScanner({
               }
             />
 
-            <View style={styles.overlay} pointerEvents="box-none">
+            <View style={styles.overlay} pointerEvents="none">
               {mode === 'paper' ? (
                 <>
                   <View style={styles.documentGuide} />
-                  <Text style={styles.guideTitle}>Fit one full page inside the frame</Text>
+                  <Text style={styles.guideTitle}>Fit the full page inside the frame</Text>
                   <Text style={styles.guideText}>
-                    Keep the page flat, square to the camera, and in good light.
+                    Keep the page flat and square. You can capture all pages before review.
                   </Text>
+                  {capturedPages.length ? (
+                    <Text style={styles.pageCount}>
+                      {capturedPages.length} page{capturedPages.length === 1 ? '' : 's'} captured
+                    </Text>
+                  ) : null}
                 </>
               ) : (
                 <>
@@ -216,7 +274,7 @@ export function JobCardScanner({
               )}
             </View>
 
-            {mode === 'paper' && !pendingPaperResult ? (
+            {mode === 'paper' && !pendingPaperResult && !errorMessage ? (
               <View style={styles.captureBar}>
                 <Pressable
                   style={[
@@ -224,7 +282,7 @@ export function JobCardScanner({
                     processing && styles.captureButtonDisabled,
                   ]}
                   onPress={() => {
-                    void capturePaperJobCard();
+                    void capturePaperPage();
                   }}
                   disabled={processing}
                   accessibilityRole="button"
@@ -236,7 +294,11 @@ export function JobCardScanner({
                   )}
                 </Pressable>
                 <Text style={styles.captureLabel}>
-                  {processing ? 'Reading document…' : 'Take photo'}
+                  {processing
+                    ? 'Reading page…'
+                    : capturedPages.length
+                      ? `Capture page ${capturedPages.length + 1}`
+                      : 'Capture page 1'}
                 </Text>
               </View>
             ) : null}
@@ -244,40 +306,79 @@ export function JobCardScanner({
             {errorMessage ? (
               <View style={styles.messageCard}>
                 <Text style={styles.errorText}>{errorMessage}</Text>
-                <Pressable
-                  style={styles.retryButton}
-                  onPress={resetScanState}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.retryButtonText}>Try Again</Text>
-                </Pressable>
+                <View style={styles.warningActions}>
+                  {capturedPages.length ? (
+                    <Pressable
+                      style={styles.secondaryButton}
+                      onPress={addAnotherPage}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.secondaryButtonText}>Add Page</Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    style={styles.reviewButton}
+                    onPress={() => {
+                      setErrorMessage('');
+                    }}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.reviewButtonText}>Try Again</Text>
+                  </Pressable>
+                </View>
               </View>
             ) : null}
 
             {pendingPaperResult ? (
               <View style={styles.messageCard}>
-                <Text style={styles.warningTitle}>Please check these fields</Text>
-                <ScrollView style={styles.warningList}>
-                  {pendingPaperResult.warnings.map((warning) => (
-                    <Text key={warning} style={styles.warningText}>
-                      • {warning}
-                    </Text>
-                  ))}
-                </ScrollView>
-                <View style={styles.warningActions}>
+                <Text style={styles.warningTitle}>
+                  Page {pendingPaperResult.sourcePages.length} captured
+                </Text>
+
+                {pendingPaperResult.job ? (
+                  <Text style={styles.previewText}>
+                    Job #{pendingPaperResult.job.referenceNumber}
+                    {pendingPaperResult.job.customerName
+                      ? ` • ${pendingPaperResult.job.customerName}`
+                      : ''}
+                  </Text>
+                ) : null}
+
+                {pendingPaperResult.warnings.length ? (
+                  <ScrollView style={styles.warningList}>
+                    {pendingPaperResult.warnings.map((warning) => (
+                      <Text key={warning} style={styles.warningText}>
+                        • {warning}
+                      </Text>
+                    ))}
+                  </ScrollView>
+                ) : (
+                  <Text style={styles.successText}>
+                    Main job details were read successfully.
+                  </Text>
+                )}
+
+                <View style={styles.threeActions}>
                   <Pressable
-                    style={styles.secondaryButton}
-                    onPress={resetScanState}
+                    style={styles.compactSecondaryButton}
+                    onPress={retakeLastPage}
                     accessibilityRole="button"
                   >
                     <Text style={styles.secondaryButtonText}>Retake</Text>
                   </Pressable>
                   <Pressable
-                    style={styles.reviewButton}
-                    onPress={() => onJobScanned(pendingPaperResult.job)}
+                    style={styles.compactSecondaryButton}
+                    onPress={addAnotherPage}
                     accessibilityRole="button"
                   >
-                    <Text style={styles.reviewButtonText}>Review Details</Text>
+                    <Text style={styles.secondaryButtonText}>Add Page</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.finishButton}
+                    onPress={finishPaperScan}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.reviewButtonText}>Finish</Text>
                   </Pressable>
                 </View>
               </View>
@@ -406,11 +507,21 @@ const styles = StyleSheet.create({
   },
   guideText: {
     marginTop: 6,
-    maxWidth: 330,
+    maxWidth: 340,
     color: '#eaecf0',
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  pageCount: {
+    marginTop: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    color: '#101828',
+    fontSize: 13,
+    fontWeight: '800',
   },
   captureBar: {
     position: 'absolute',
@@ -482,7 +593,7 @@ const styles = StyleSheet.create({
     right: 18,
     bottom: 24,
     left: 18,
-    maxHeight: 270,
+    maxHeight: 300,
     padding: 16,
     borderRadius: 12,
     backgroundColor: '#ffffff',
@@ -493,26 +604,26 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
-  retryButton: {
-    minHeight: 44,
-    marginTop: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#101828',
-  },
-  retryButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '800',
-  },
   warningTitle: {
     color: '#101828',
     fontSize: 16,
     fontWeight: '800',
   },
+  previewText: {
+    marginTop: 5,
+    color: '#344054',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  successText: {
+    marginTop: 8,
+    color: '#027a48',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   warningList: {
     marginTop: 8,
+    maxHeight: 95,
   },
   warningText: {
     marginBottom: 5,
@@ -525,7 +636,21 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 12,
   },
+  threeActions: {
+    flexDirection: 'row',
+    gap: 7,
+    marginTop: 12,
+  },
   secondaryButton: {
+    minHeight: 44,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#d0d5dd',
+    borderRadius: 8,
+  },
+  compactSecondaryButton: {
     minHeight: 44,
     flex: 1,
     alignItems: 'center',
@@ -536,7 +661,7 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: '#344054',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   reviewButton: {
@@ -547,9 +672,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#101828',
   },
+  finishButton: {
+    minHeight: 44,
+    flex: 1.15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    backgroundColor: '#101828',
+  },
   reviewButtonText: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
 });
