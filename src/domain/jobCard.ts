@@ -24,9 +24,17 @@ export interface JobCard {
   referenceNumber: string;
   fulfilmentType: FulfilmentType;
   location: string;
+  deliveryInstructions: string;
+  deliveryFeePercent: number | null;
   amountCents: number;
   deliveryDate: LocalDate | null;
   status: JobStatus;
+}
+
+export interface JobCardSourcePage {
+  pageNumber: number;
+  rawText: string;
+  capturedAt: string;
 }
 
 const createLocalId = () =>
@@ -39,6 +47,8 @@ export const createEmptyJobCard = (): JobCard => ({
   referenceNumber: '',
   fulfilmentType: 'Delivery',
   location: '',
+  deliveryInstructions: '',
+  deliveryFeePercent: null,
   amountCents: 0,
   deliveryDate: null,
   status: 'Pending',

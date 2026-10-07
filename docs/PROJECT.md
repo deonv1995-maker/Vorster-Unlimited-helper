@@ -58,7 +58,7 @@ Implementation notes:
 - Money is stored as integer cents and formatted as ZAR in the UI.
 - Date-made and delivery-date values are stored as date-only `YYYY-MM-DD` values to avoid timezone rollover.
 - Manual entry and future scanner imports write through the same `JobCard` model and repository.
-- SQLite schema version starts at `user_version = 1`; future schema changes must use migrations rather than replacing the table.
+- SQLite schema migrations are versioned. Schema v2 adds structured delivery instructions, delivery-fee percentage, and per-job source-page OCR storage.
 
 ### Increment 3 — scanning
 - Camera permission flow
@@ -66,7 +66,8 @@ Implementation notes:
 - Duplicate-safe matching by job card / quote reference number
 - Review in the normal Job Card editor before saving
 - On-device paper OCR supports the legacy Rock Pots / DK Pots job-card layout and the current Vorster Unlimited quote layout
-- Paper OCR extracts shared job-level fields and always routes through the normal editor for review
+- Paper OCR extracts the TO customer, normalized trailing document number, delivery address/instructions/fee, amount, and shared job-level fields, then always routes through the normal editor for review
+- Paper scanning supports multi-page sessions and persists each page's raw OCR text for future line-item extraction
 - Printed Due Date is not mapped to Delivery Date; the app keeps operational delivery planning separate
 
 ### Increment 4 — planning

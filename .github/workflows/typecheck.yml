@@ -24,3 +24,6 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Paper parser regression tests
+        run: npm run test:parser

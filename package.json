@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:parser": "tsx scripts/test-paper-parser.ts"
   },
   "dependencies": {
     "@expo/ui": "~57.0.22",
@@ -22,6 +23,8 @@
   },
   "devDependencies": {
     "@types/react": "^19.2.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "tsx": "^4.20.6",
+    "@types/node": "^22.10.0"
   }
 }

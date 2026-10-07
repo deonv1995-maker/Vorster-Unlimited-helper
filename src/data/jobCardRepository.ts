@@ -1,6 +1,11 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { FulfilmentType, JobCard, JobStatus } from '../domain/jobCard';
+import type {
+  FulfilmentType,
+  JobCard,
+  JobCardSourcePage,
+  JobStatus,
+} from '../domain/jobCard';
 
 interface JobCardRow {
   id: string;
@@ -9,6 +14,8 @@ interface JobCardRow {
   reference_number: string;
   fulfilment_type: FulfilmentType;
   location: string;
+  delivery_instructions: string;
+  delivery_fee_percent: number | null;
   amount_cents: number;
   delivery_date: string | null;
   status: JobStatus;
@@ -21,6 +28,8 @@ const fromRow = (row: JobCardRow): JobCard => ({
   referenceNumber: row.reference_number,
   fulfilmentType: row.fulfilment_type,
   location: row.location,
+  deliveryInstructions: row.delivery_instructions,
+  deliveryFeePercent: row.delivery_fee_percent,
   amountCents: row.amount_cents,
   deliveryDate: row.delivery_date,
   status: row.status,
@@ -35,6 +44,8 @@ export async function listJobCards(db: SQLiteDatabase): Promise<JobCard[]> {
       reference_number,
       fulfilment_type,
       location,
+      delivery_instructions,
+      delivery_fee_percent,
       amount_cents,
       delivery_date,
       status
@@ -48,46 +59,103 @@ export async function listJobCards(db: SQLiteDatabase): Promise<JobCard[]> {
   return rows.map(fromRow);
 }
 
-export async function saveJobCard(db: SQLiteDatabase, job: JobCard): Promise<void> {
+export async function saveJobCard(
+  db: SQLiteDatabase,
+  job: JobCard,
+  sourcePages?: JobCardSourcePage[],
+): Promise<void> {
   const now = new Date().toISOString();
 
-  await db.runAsync(
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `
+        INSERT INTO job_cards (
+          id,
+          date_made,
+          customer_name,
+          reference_number,
+          fulfilment_type,
+          location,
+          delivery_instructions,
+          delivery_fee_percent,
+          amount_cents,
+          delivery_date,
+          status,
+          created_at,
+          updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          date_made = excluded.date_made,
+          customer_name = excluded.customer_name,
+          reference_number = excluded.reference_number,
+          fulfilment_type = excluded.fulfilment_type,
+          location = excluded.location,
+          delivery_instructions = excluded.delivery_instructions,
+          delivery_fee_percent = excluded.delivery_fee_percent,
+          amount_cents = excluded.amount_cents,
+          delivery_date = excluded.delivery_date,
+          status = excluded.status,
+          updated_at = excluded.updated_at
+      `,
+      job.id,
+      job.dateMade,
+      job.customerName.trim(),
+      job.referenceNumber.trim(),
+      job.fulfilmentType,
+      job.location.trim(),
+      job.deliveryInstructions.trim(),
+      job.deliveryFeePercent,
+      job.amountCents,
+      job.deliveryDate,
+      job.status,
+      now,
+      now,
+    );
+
+    if (sourcePages !== undefined) {
+      await db.runAsync(
+        'DELETE FROM job_card_source_pages WHERE job_card_id = ?',
+        job.id,
+      );
+
+      for (const page of sourcePages) {
+        await db.runAsync(
+          `
+            INSERT INTO job_card_source_pages (
+              id,
+              job_card_id,
+              page_number,
+              raw_text,
+              captured_at
+            )
+            VALUES (?, ?, ?, ?, ?)
+          `,
+          `${job.id}-page-${page.pageNumber}`,
+          job.id,
+          page.pageNumber,
+          page.rawText,
+          page.capturedAt,
+        );
+      }
+    }
+  });
+}
+
+export async function listJobCardSourcePages(
+  db: SQLiteDatabase,
+  jobCardId: string,
+): Promise<JobCardSourcePage[]> {
+  return db.getAllAsync<JobCardSourcePage>(
     `
-      INSERT INTO job_cards (
-        id,
-        date_made,
-        customer_name,
-        reference_number,
-        fulfilment_type,
-        location,
-        amount_cents,
-        delivery_date,
-        status,
-        created_at,
-        updated_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        date_made = excluded.date_made,
-        customer_name = excluded.customer_name,
-        reference_number = excluded.reference_number,
-        fulfilment_type = excluded.fulfilment_type,
-        location = excluded.location,
-        amount_cents = excluded.amount_cents,
-        delivery_date = excluded.delivery_date,
-        status = excluded.status,
-        updated_at = excluded.updated_at
+      SELECT
+        page_number AS pageNumber,
+        raw_text AS rawText,
+        captured_at AS capturedAt
+      FROM job_card_source_pages
+      WHERE job_card_id = ?
+      ORDER BY page_number ASC
     `,
-    job.id,
-    job.dateMade,
-    job.customerName.trim(),
-    job.referenceNumber.trim(),
-    job.fulfilmentType,
-    job.location.trim(),
-    job.amountCents,
-    job.deliveryDate,
-    job.status,
-    now,
-    now,
+    jobCardId,
   );
 }
