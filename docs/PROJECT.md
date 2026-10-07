@@ -62,9 +62,10 @@ Implementation notes:
 
 ### Increment 3 — scanning
 - Camera permission flow
-- QR-first import
-- OCR fallback for legacy paper job cards
-- Review screen before saving scanned data
+- QR-first import using the versioned `vu-job-card/v1` contract
+- Duplicate-safe matching by job card / quote reference number
+- Review in the normal Job Card editor before saving
+- OCR fallback for legacy paper job cards remains planned; implement against an actual Vorster Unlimited job-card sample so extraction rules match the real document
 
 ### Increment 4 — planning
 - Today / tomorrow / this week filters
