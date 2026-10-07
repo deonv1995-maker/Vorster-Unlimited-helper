@@ -307,8 +307,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f4f5f7',
   },
   topBar: {
-    minHeight: 58 + androidTopSystemInset,
-    paddingTop: androidTopSystemInset,
+    minHeight: 70 + androidTopSystemInset,
+    paddingTop: androidTopSystemInset + 12,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
