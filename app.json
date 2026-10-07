@@ -15,7 +15,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Vorster Unlimited Helper to scan job card QR codes.",
+          "cameraPermission": "Allow Vorster Unlimited Helper to scan paper job cards and QR codes.",
           "recordAudioAndroid": false,
           "barcodeScannerEnabled": true
         }
@@ -30,7 +30,8 @@
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "16.0"
+            "deploymentTarget": "16.0",
+            "useFrameworks": "static"
           }
         }
       ]
