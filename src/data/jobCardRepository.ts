@@ -9,7 +9,7 @@ interface JobCardRow {
   reference_number: string;
   fulfilment_type: FulfilmentType;
   location: string;
-  amount_rand: number;
+  amount_cents: number;
   delivery_date: string | null;
   status: JobStatus;
 }
@@ -21,7 +21,7 @@ const fromRow = (row: JobCardRow): JobCard => ({
   referenceNumber: row.reference_number,
   fulfilmentType: row.fulfilment_type,
   location: row.location,
-  amountRand: row.amount_rand,
+  amountCents: row.amount_cents,
   deliveryDate: row.delivery_date,
   status: row.status,
 });
@@ -35,7 +35,7 @@ export async function listJobCards(db: SQLiteDatabase): Promise<JobCard[]> {
       reference_number,
       fulfilment_type,
       location,
-      amount_rand,
+      amount_cents,
       delivery_date,
       status
     FROM job_cards
@@ -60,7 +60,7 @@ export async function saveJobCard(db: SQLiteDatabase, job: JobCard): Promise<voi
         reference_number,
         fulfilment_type,
         location,
-        amount_rand,
+        amount_cents,
         delivery_date,
         status,
         created_at,
@@ -73,7 +73,7 @@ export async function saveJobCard(db: SQLiteDatabase, job: JobCard): Promise<voi
         reference_number = excluded.reference_number,
         fulfilment_type = excluded.fulfilment_type,
         location = excluded.location,
-        amount_rand = excluded.amount_rand,
+        amount_cents = excluded.amount_cents,
         delivery_date = excluded.delivery_date,
         status = excluded.status,
         updated_at = excluded.updated_at
@@ -84,7 +84,7 @@ export async function saveJobCard(db: SQLiteDatabase, job: JobCard): Promise<voi
     job.referenceNumber.trim(),
     job.fulfilmentType,
     job.location.trim(),
-    job.amountRand,
+    job.amountCents,
     job.deliveryDate,
     job.status,
     now,
