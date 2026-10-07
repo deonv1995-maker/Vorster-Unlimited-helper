@@ -19,6 +19,7 @@ import {
   createEmptyJobCard,
   type JobCard,
 } from './src/domain/jobCard';
+import { QrJobCardScanner } from './src/features/jobCards/QrJobCardScanner';
 import { useJobCards } from './src/features/jobCards/useJobCards';
 import {
   formatLocalDate,
@@ -67,6 +68,7 @@ function PlannerScreen() {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<PlannerFilter>('All');
   const [editorJob, setEditorJob] = useState<JobCard | null>(null);
+  const [scannerVisible, setScannerVisible] = useState(false);
   const [dateJobId, setDateJobId] = useState<string | null>(null);
 
   const dateJob = useMemo(
@@ -132,9 +134,7 @@ function PlannerScreen() {
           <Pressable
             style={[styles.actionButton, styles.scanButton]}
             accessibilityRole="button"
-            onPress={() => {
-              // Scanner workflow is intentionally added in the next increment.
-            }}
+            onPress={() => setScannerVisible(true)}
           >
             <Text style={styles.scanButtonText}>Scan Job Card</Text>
           </Pressable>
@@ -288,6 +288,15 @@ function PlannerScreen() {
           </View>
         </ScrollView>
       )}
+
+      <QrJobCardScanner
+        visible={scannerVisible}
+        onCancel={() => setScannerVisible(false)}
+        onJobScanned={(job) => {
+          setScannerVisible(false);
+          setEditorJob(job);
+        }}
+      />
 
       <JobCardEditor
         visible={editorJob !== null}
