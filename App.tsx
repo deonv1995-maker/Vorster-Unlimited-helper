@@ -73,7 +73,7 @@ export default function App() {
 }
 
 function PlannerScreen() {
-  const { jobs, loading, saveJob } = useJobCards();
+  const { jobs, loading, saveJob, removeJob } = useJobCards();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<PlannerFilter>('All');
   const [deliveryFilter, setDeliveryFilter] = useState<DeliveryFilter>('All');
@@ -374,6 +374,15 @@ function PlannerScreen() {
       <JobCardEditor
         visible={editorJob !== null}
         job={editorJob}
+        onRemove={
+          editorJob && jobs.some((job) => job.id === editorJob.id)
+            ? async (job) => {
+                await removeJob(job.id);
+                setEditorJob(null);
+                setPendingScanPages(undefined);
+              }
+            : undefined
+        }
         onCancel={() => {
           setEditorJob(null);
           setPendingScanPages(undefined);
