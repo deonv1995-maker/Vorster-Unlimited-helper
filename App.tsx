@@ -20,11 +20,18 @@ import {
   type JobCard,
 } from './src/domain/jobCard';
 import { QrJobCardScanner } from './src/features/jobCards/QrJobCardScanner';
+import {
+  DELIVERY_FILTERS,
+  getDeliveryUrgency,
+  matchesDeliveryFilter,
+  type DeliveryFilter,
+} from './src/features/jobCards/jobPlanning';
 import { useJobCards } from './src/features/jobCards/useJobCards';
 import {
   formatLocalDate,
   fromLocalDate,
   toLocalDate,
+  todayLocalDate,
 } from './src/utils/localDate';
 
 const COLUMN_WIDTHS = {
@@ -67,9 +74,12 @@ function PlannerScreen() {
   const { jobs, loading, saveJob } = useJobCards();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<PlannerFilter>('All');
+  const [deliveryFilter, setDeliveryFilter] = useState<DeliveryFilter>('All');
   const [editorJob, setEditorJob] = useState<JobCard | null>(null);
   const [scannerVisible, setScannerVisible] = useState(false);
   const [dateJobId, setDateJobId] = useState<string | null>(null);
+
+  const today = todayLocalDate();
 
   const dateJob = useMemo(
     () => jobs.find((job) => job.id === dateJobId) ?? null,
@@ -87,6 +97,7 @@ function PlannerScreen() {
         job.location.toLocaleLowerCase('en-ZA').includes(normalizedQuery);
 
       if (!matchesQuery) return false;
+      if (!matchesDeliveryFilter(job, deliveryFilter, today)) return false;
 
       switch (filter) {
         case 'Active':
@@ -99,7 +110,7 @@ function PlannerScreen() {
           return true;
       }
     });
-  }, [filter, jobs, query]);
+  }, [deliveryFilter, filter, jobs, query, today]);
 
   const activeCount = useMemo(
     () => jobs.filter(isActive).length,
@@ -159,6 +170,7 @@ function PlannerScreen() {
           clearButtonMode="while-editing"
         />
 
+        <Text style={styles.filterLabel}>Status</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -182,13 +194,41 @@ function PlannerScreen() {
           })}
         </ScrollView>
 
+        <Text style={styles.filterLabel}>Delivery date</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+        >
+          {DELIVERY_FILTERS.map((item) => {
+            const selected = deliveryFilter === item;
+            return (
+              <Pressable
+                key={item}
+                onPress={() => setDeliveryFilter(item)}
+                style={[
+                  styles.filterButton,
+                  selected && styles.filterButtonSelected,
+                  item === 'Overdue' && selected && styles.overdueFilterSelected,
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.filterText, selected && styles.filterTextSelected]}>
+                  {item}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
         <View style={styles.summaryBar}>
           <Text style={styles.summaryText}>
             {jobs.length} job{jobs.length === 1 ? '' : 's'}
           </Text>
           <Text style={styles.summaryDivider}>•</Text>
           <Text style={styles.summaryText}>{activeCount} active</Text>
-          {query || filter !== 'All' ? (
+          {query || filter !== 'All' || deliveryFilter !== 'All' ? (
             <>
               <Text style={styles.summaryDivider}>•</Text>
               <Text style={styles.summaryText}>{visibleJobs.length} shown</Text>
@@ -220,6 +260,7 @@ function PlannerScreen() {
               {visibleJobs.length ? (
                 visibleJobs.map((job) => {
                   const openEditor = () => setEditorJob(job);
+                  const deliveryUrgency = getDeliveryUrgency(job, today);
 
                   return (
                     <View key={job.id} style={styles.row}>
@@ -254,12 +295,27 @@ function PlannerScreen() {
                         onPress={openEditor}
                       />
                       <Pressable
-                        style={[styles.cell, { width: COLUMN_WIDTHS.deliveryDate }]}
+                        style={[
+                          styles.cell,
+                          { width: COLUMN_WIDTHS.deliveryDate },
+                          deliveryUrgency === 'overdue' && styles.deliveryOverdueCell,
+                          deliveryUrgency === 'today' && styles.deliveryTodayCell,
+                          deliveryUrgency === 'tomorrow' && styles.deliveryTomorrowCell,
+                          deliveryUrgency === 'completed' && styles.deliveryCompletedCell,
+                        ]}
                         onPress={() => setDateJobId(job.id)}
                         accessibilityRole="button"
                         accessibilityLabel={`Choose delivery date for ${job.referenceNumber}`}
                       >
-                        <Text style={styles.dateCellText}>
+                        <Text
+                          style={[
+                            styles.dateCellText,
+                            deliveryUrgency === 'overdue' && styles.deliveryOverdueText,
+                            deliveryUrgency === 'today' && styles.deliveryTodayText,
+                            deliveryUrgency === 'tomorrow' && styles.deliveryTomorrowText,
+                            deliveryUrgency === 'completed' && styles.deliveryCompletedText,
+                          ]}
+                        >
                           {formatLocalDate(job.deliveryDate)}
                         </Text>
                       </Pressable>
@@ -441,10 +497,19 @@ const styles = StyleSheet.create({
     color: '#101828',
     fontSize: 15,
   },
+  filterLabel: {
+    marginTop: 10,
+    marginHorizontal: 16,
+    color: '#667085',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
   filterRow: {
     gap: 8,
     paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingTop: 6,
   },
   filterButton: {
     minHeight: 36,
@@ -458,6 +523,10 @@ const styles = StyleSheet.create({
   filterButtonSelected: {
     borderColor: '#101828',
     backgroundColor: '#101828',
+  },
+  overdueFilterSelected: {
+    borderColor: '#b42318',
+    backgroundColor: '#b42318',
   },
   filterText: {
     color: '#475467',
@@ -520,6 +589,30 @@ const styles = StyleSheet.create({
     color: '#175cd3',
     fontSize: 13,
     fontWeight: '700',
+  },
+  deliveryOverdueCell: {
+    backgroundColor: '#fef3f2',
+  },
+  deliveryTodayCell: {
+    backgroundColor: '#fffaeb',
+  },
+  deliveryTomorrowCell: {
+    backgroundColor: '#f0f9ff',
+  },
+  deliveryCompletedCell: {
+    backgroundColor: '#ecfdf3',
+  },
+  deliveryOverdueText: {
+    color: '#b42318',
+  },
+  deliveryTodayText: {
+    color: '#b54708',
+  },
+  deliveryTomorrowText: {
+    color: '#026aa2',
+  },
+  deliveryCompletedText: {
+    color: '#027a48',
   },
   centerState: {
     flex: 1,
