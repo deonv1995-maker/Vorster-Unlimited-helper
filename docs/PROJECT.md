@@ -65,7 +65,9 @@ Implementation notes:
 - QR-first import using the versioned `vu-job-card/v1` contract
 - Duplicate-safe matching by job card / quote reference number
 - Review in the normal Job Card editor before saving
-- OCR fallback for legacy paper job cards remains planned; implement against an actual Vorster Unlimited job-card sample so extraction rules match the real document
+- On-device paper OCR supports the legacy Rock Pots / DK Pots job-card layout and the current Vorster Unlimited quote layout
+- Paper OCR extracts shared job-level fields and always routes through the normal editor for review
+- Printed Due Date is not mapped to Delivery Date; the app keeps operational delivery planning separate
 
 ### Increment 4 — planning
 - Independent delivery-date filters: All / Today / Tomorrow / This Week / Overdue
