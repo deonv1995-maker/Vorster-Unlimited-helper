@@ -1,3 +1,8 @@
+import {
+  todayLocalDate,
+  type LocalDate,
+} from '../utils/localDate';
+
 export const JOB_STATUSES = [
   'Pending',
   'In Production',
@@ -14,13 +19,13 @@ export type FulfilmentType = 'Delivery' | 'Collection';
 
 export interface JobCard {
   id: string;
-  dateMade: string;
+  dateMade: LocalDate;
   customerName: string;
   referenceNumber: string;
   fulfilmentType: FulfilmentType;
   location: string;
-  amountRand: number;
-  deliveryDate: string | null;
+  amountCents: number;
+  deliveryDate: LocalDate | null;
   status: JobStatus;
 }
 
@@ -29,12 +34,12 @@ const createLocalId = () =>
 
 export const createEmptyJobCard = (): JobCard => ({
   id: createLocalId(),
-  dateMade: new Date().toISOString(),
+  dateMade: todayLocalDate(),
   customerName: '',
   referenceNumber: '',
   fulfilmentType: 'Delivery',
   location: '',
-  amountRand: 0,
+  amountCents: 0,
   deliveryDate: null,
   status: 'Pending',
 });

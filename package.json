@@ -14,7 +14,8 @@
     "@expo/ui": "~57.0.22",
     "expo": "^57.0.0",
     "react": "19.2.3",
-    "react-native": "0.86.0"
+    "react-native": "0.86.0",
+    "expo-sqlite": "~57.0.4"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",

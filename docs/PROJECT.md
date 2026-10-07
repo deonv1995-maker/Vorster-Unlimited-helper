@@ -50,8 +50,15 @@ Delivery date is editable from the table through the native platform date picker
 ### Increment 2 — editing and persistence
 - Add/edit jobs
 - Status picker
-- Local database
-- Search/filter/sort
+- Local SQLite database behind a repository boundary
+- Search and operational filters
+- Jobs sorted by delivery date, then date made
+
+Implementation notes:
+- Money is stored as integer cents and formatted as ZAR in the UI.
+- Date-made and delivery-date values are stored as date-only `YYYY-MM-DD` values to avoid timezone rollover.
+- Manual entry and future scanner imports write through the same `JobCard` model and repository.
+- SQLite schema version starts at `user_version = 1`; future schema changes must use migrations rather than replacing the table.
 
 ### Increment 3 — scanning
 - Camera permission flow
