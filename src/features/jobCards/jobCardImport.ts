@@ -5,7 +5,7 @@ import {
   type JobCard,
   type JobStatus,
 } from '../../domain/jobCard';
-import { fromLocalDate, type LocalDate } from '../../utils/localDate';
+import { fromLocalDate, toLocalDate, type LocalDate } from '../../utils/localDate';
 
 const SCHEMA = 'vu-job-card/v1';
 
@@ -41,7 +41,7 @@ const isLocalDate = (value: unknown): value is LocalDate => {
   }
 
   const parsed = fromLocalDate(value);
-  return !Number.isNaN(parsed.getTime());
+  return !Number.isNaN(parsed.getTime()) && toLocalDate(parsed) === value;
 };
 
 export function parseJobCardQr(data: string): JobCardImportResult {
@@ -92,7 +92,9 @@ export function parseJobCardQr(data: string): JobCardImportResult {
 
   if (
     payload.amountCents !== undefined &&
-    (!Number.isInteger(payload.amountCents) || payload.amountCents < 0)
+    (typeof payload.amountCents !== 'number' ||
+      !Number.isInteger(payload.amountCents) ||
+      payload.amountCents < 0)
   ) {
     return { ok: false, message: 'The QR code contains an invalid amount.' };
   }
