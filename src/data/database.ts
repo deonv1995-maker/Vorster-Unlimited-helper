@@ -13,7 +13,7 @@ export async function migrateDatabase(db: SQLiteDatabase) {
       reference_number TEXT NOT NULL,
       fulfilment_type TEXT NOT NULL CHECK (fulfilment_type IN ('Delivery', 'Collection')),
       location TEXT NOT NULL DEFAULT '',
-      amount_rand REAL NOT NULL DEFAULT 0,
+      amount_cents INTEGER NOT NULL DEFAULT 0,
       delivery_date TEXT,
       status TEXT NOT NULL,
       created_at TEXT NOT NULL,
@@ -31,5 +31,7 @@ export async function migrateDatabase(db: SQLiteDatabase) {
 
     CREATE INDEX IF NOT EXISTS idx_job_cards_status
       ON job_cards(status);
+
+    PRAGMA user_version = 1;
   `);
 }
