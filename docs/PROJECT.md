@@ -68,6 +68,8 @@ Implementation notes:
 - OCR fallback for legacy paper job cards remains planned; implement against an actual Vorster Unlimited job-card sample so extraction rules match the real document
 
 ### Increment 4 — planning
-- Today / tomorrow / this week filters
-- Overdue highlighting
-- Delivery/collection planning views
+- Independent delivery-date filters: All / Today / Tomorrow / This Week / Overdue
+- Delivery filters can be combined with status and search filters
+- Overdue, today, tomorrow, and completed delivery dates have distinct visual states
+- Planning comparisons use date-only values, not timestamps, to avoid timezone rollover
+- "This Week" means today through the coming Sunday
