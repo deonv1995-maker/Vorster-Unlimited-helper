@@ -159,3 +159,17 @@ export async function listJobCardSourcePages(
     jobCardId,
   );
 }
+
+
+export async function deleteJobCard(
+  db: SQLiteDatabase,
+  jobCardId: string,
+): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      'DELETE FROM job_card_source_pages WHERE job_card_id = ?',
+      jobCardId,
+    );
+    await db.runAsync('DELETE FROM job_cards WHERE id = ?', jobCardId);
+  });
+}
