@@ -24,8 +24,11 @@ export interface JobCard {
   status: JobStatus;
 }
 
+const createLocalId = () =>
+  `job-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
 export const createEmptyJobCard = (): JobCard => ({
-  id: crypto.randomUUID(),
+  id: createLocalId(),
   dateMade: new Date().toISOString(),
   customerName: '',
   referenceNumber: '',
