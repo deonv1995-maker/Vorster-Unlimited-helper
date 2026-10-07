@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 
 import type { JobCard, JobCardSourcePage } from '../../domain/jobCard';
+import { androidTopSystemInset } from '../../ui/systemInsets';
 import { parseJobCardQr } from './jobCardImport';
 import { parsePaperJobCardPages } from './paperJobCardImport';
 
@@ -419,7 +420,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#101828',
   },
   topBar: {
-    minHeight: 64,
+    minHeight: 64 + androidTopSystemInset,
+    paddingTop: androidTopSystemInset,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -437,7 +439,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   topBarSpacer: {
-    width: 50,
+    width: 74,
   },
   modeBar: {
     flexDirection: 'row',

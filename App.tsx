@@ -28,6 +28,7 @@ import {
   type DeliveryFilter,
 } from './src/features/jobCards/jobPlanning';
 import { useJobCards } from './src/features/jobCards/useJobCards';
+import { androidTopSystemInset } from './src/ui/systemInsets';
 import {
   formatLocalDate,
   fromLocalDate,
@@ -446,6 +447,7 @@ function Cell({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    paddingTop: androidTopSystemInset,
     backgroundColor: '#f4f5f7',
   },
   header: {
