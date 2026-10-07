@@ -15,7 +15,8 @@
     "expo": "^57.0.0",
     "react": "19.2.3",
     "react-native": "0.86.0",
-    "expo-sqlite": "~57.0.4"
+    "expo-sqlite": "~57.0.4",
+    "expo-camera": "~57.0.6"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",
