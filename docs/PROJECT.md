@@ -76,3 +76,8 @@ Implementation notes:
 - Overdue, today, tomorrow, and completed delivery dates have distinct visual states
 - Planning comparisons use date-only values, not timestamps, to avoid timezone rollover
 - "This Week" means today through the coming Sunday
+
+
+## Order removal
+
+Existing saved orders can be removed from the Job Card editor. Removal requires an explicit destructive confirmation. Deleting a job also deletes its persisted multi-page OCR source data so no orphaned scan records remain. Unsaved new jobs do not show the Remove order action.
