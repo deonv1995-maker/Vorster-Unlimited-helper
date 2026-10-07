@@ -10,6 +10,8 @@ import {
   View,
 } from 'react-native';
 
+import appConfig from '../../app.json';
+
 import {
   JOB_STATUSES,
   type FulfilmentType,
@@ -128,7 +130,12 @@ export function JobCardEditor({
           <Pressable onPress={onCancel} accessibilityRole="button">
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
-          <Text style={styles.title}>Job Card</Text>
+          <View style={styles.titleBlock}>
+            <Text style={styles.title}>Job Card</Text>
+            <Text style={styles.buildLabel}>
+              Build {appConfig.expo.android.versionCode}
+            </Text>
+          </View>
           <Pressable
             onPress={handleSave}
             accessibilityRole="button"
@@ -303,10 +310,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#d0d5dd',
   },
+  titleBlock: {
+    alignItems: 'center',
+  },
   title: {
     color: '#101828',
     fontSize: 18,
     fontWeight: '800',
+  },
+  buildLabel: {
+    marginTop: 1,
+    color: '#667085',
+    fontSize: 10,
+    fontWeight: '700',
   },
   cancelText: {
     color: '#475467',
