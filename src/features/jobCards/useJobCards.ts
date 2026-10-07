@@ -2,7 +2,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { JobCard, JobCardSourcePage } from '../../domain/jobCard';
-import { listJobCards, saveJobCard } from '../../data/jobCardRepository';
+import { deleteJobCard, listJobCards, saveJobCard } from '../../data/jobCardRepository';
 
 export function useJobCards() {
   const db = useSQLiteContext();
@@ -41,10 +41,19 @@ export function useJobCards() {
     [db, refresh],
   );
 
+  const remove = useCallback(
+    async (jobCardId: string) => {
+      await deleteJobCard(db, jobCardId);
+      await refresh();
+    },
+    [db, refresh],
+  );
+
   return {
     jobs,
     loading,
     saveJob: save,
+    removeJob: remove,
     refresh,
   };
 }
