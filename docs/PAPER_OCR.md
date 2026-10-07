@@ -2,55 +2,59 @@
 
 ## Supported source documents
 
-The first OCR rules are based on the paper formats currently used by Vorster Unlimited:
+The OCR rules are based on the paper formats currently used by Vorster Unlimited:
 
 - Legacy Rock Pots / DK Pots job cards
-- Newer Vorster Unlimited Trading quotes
+- Current Vorster Unlimited Trading quotes
 - Multi-page variants of both formats
 
-The parser uses shared document anchors rather than relying on one fixed page coordinate.
+The parser uses document anchors rather than one fixed page coordinate.
 
 ## Imported fields
 
 | App field | Paper source |
 | --- | --- |
 | Date made | `DATE` |
-| Customer name | `TO` customer block; legacy fallback near `Customer VAT No` |
-| Job card / quote # | `NUMBER` / QU-style reference |
-| Delivery / Collection | Delivery only when an explicit delivery-fee marker is detected; otherwise Collection is selected for review |
-| Location | Customer `PHYSICAL ADDRESS` |
+| Customer name | Customer name under the `TO` block |
+| Job card / quote # | Numeric tail of `NUMBER`; leading zero padding and QU/JC prefixes are removed |
+| Delivery / Collection | Delivery when a delivery fee or delivery instruction is detected |
+| Location | Customer `PHYSICAL ADDRESS`, including postal code when OCR places it below the delivery fee |
+| Delivery instructions | Recognized instructions such as `Call Before Delivery` |
+| Delivery fee % | `Delivery Fee: n%` |
 | Amount | Prefer `BALANCE DUE`, then `GRAND TOTAL`, then `TOTAL DUE` |
 | Delivery date | Deliberately left blank |
 | Status | Pending |
 
+Example: printed number `QU00000077` is stored and displayed as job/quote number `77`.
+
+Customer codes printed after the TO name, such as `:CRE002` or `:MGC026`, are not included in the customer display name.
+
 ## Delivery date rule
 
-The paper document's `DUE DATE` is an accounting/document due date. It is **not** imported as the operational delivery date.
+The paper document's `DUE DATE` is an accounting/document due date. It is **not** imported as the operational Delivery Date.
 
 The app's Delivery Date remains a separate planning value chosen with the calendar.
 
-## Multi-page documents
+## Multi-page capture
 
-The accounting system repeats identifying information and final totals on later pages. A user can therefore scan any page that includes the header/customer/total information.
+Paper scanning is a capture session rather than a one-photo action:
 
-The app stores one row per job card or quote. Existing reference numbers are matched before saving so rescanning another page does not intentionally create a second row.
+1. Capture page 1.
+2. Choose **Retake**, **Add Page**, or **Finish**.
+3. Repeat **Add Page** for the remaining pages.
+4. Finish only when all useful pages have been captured.
+5. Review the combined job-level fields in the normal Job Card editor.
+6. Saving the job also stores the raw OCR text of every captured page in page order.
 
-## Scan flow
+The stored page OCR is intentionally separate from the current job-level columns. It gives future product-line extraction, production analysis, or document reprocessing access to the whole multi-page document without changing the core JobCard model again.
 
-1. Open **Scan Job Card**.
-2. Choose **Paper** (default) or **QR Code**.
-3. Fit the whole paper page inside the document guide.
-4. Take the photo.
-5. OCR runs on-device.
-6. Parsed fields are validated.
-7. Any uncertain fields are called out.
-8. The normal Job Card editor opens for final review.
-9. Save through the same repository used by manual and QR entry.
+A later scan of the same normalized job/quote number matches the existing row. When that reviewed scan is saved, its source-page set replaces the previous source-page set for that job.
 
 ## Extraction safety
 
 - OCR never writes directly to SQLite.
-- Customer name and reference number still pass through the normal editor validation.
-- Amounts are converted to integer cents.
+- The user reviews all parsed values before saving.
+- Customer extraction prioritizes the TO customer block and rejects address/delivery instruction text as a customer name.
+- Amounts are stored as integer cents.
 - Printed handwritten notes are not used as authoritative structured data.
-- The product line-item table is intentionally ignored in this first OCR increment because the planner currently stores job-level information only.
+- Product line-item tables are retained in the saved page OCR but are not yet promoted into structured product rows.
