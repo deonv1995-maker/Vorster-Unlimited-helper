@@ -293,8 +293,15 @@ function PlannerScreen() {
         visible={scannerVisible}
         onCancel={() => setScannerVisible(false)}
         onJobScanned={(job) => {
+          const normalizedReference = job.referenceNumber.trim().toLocaleLowerCase('en-ZA');
+          const existingJob = jobs.find(
+            (storedJob) =>
+              storedJob.referenceNumber.trim().toLocaleLowerCase('en-ZA') ===
+              normalizedReference,
+          );
+
           setScannerVisible(false);
-          setEditorJob(job);
+          setEditorJob(existingJob ? { ...job, id: existingJob.id } : job);
         }}
       />
 
