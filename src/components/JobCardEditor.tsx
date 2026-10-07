@@ -1,6 +1,7 @@
 import DateTimePicker from '@expo/ui/community/datetime-picker';
 import { useEffect, useState } from 'react';
 import {
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -30,6 +31,7 @@ interface JobCardEditorProps {
   job: JobCard | null;
   onCancel: () => void;
   onSave: (job: JobCard) => Promise<void>;
+  onRemove?: (job: JobCard) => Promise<void>;
 }
 
 export function JobCardEditor({
@@ -37,12 +39,14 @@ export function JobCardEditor({
   job,
   onCancel,
   onSave,
+  onRemove,
 }: JobCardEditorProps) {
   const [draft, setDraft] = useState<JobCard | null>(job);
   const [amountText, setAmountText] = useState('');
   const [deliveryFeeText, setDeliveryFeeText] = useState('');
   const [showDeliveryDatePicker, setShowDeliveryDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [validationMessage, setValidationMessage] = useState('');
 
   useEffect(() => {
@@ -57,6 +61,7 @@ export function JobCardEditor({
         : '',
     );
     setValidationMessage('');
+    setRemoving(false);
     setShowDeliveryDatePicker(false);
   }, [job, visible]);
 
@@ -117,6 +122,26 @@ export function JobCardEditor({
     } finally {
       setSaving(false);
     }
+  };
+
+  const confirmRemove = () => {
+    if (!onRemove) return;
+
+    Alert.alert(
+      'Remove order?',
+      `Remove ${draft.customerName || 'this order'} #${draft.referenceNumber || ''} from the list? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            setRemoving(true);
+            void onRemove(draft).finally(() => setRemoving(false));
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -252,6 +277,19 @@ export function JobCardEditor({
 
           {validationMessage ? (
             <Text style={styles.validationText}>{validationMessage}</Text>
+          ) : null}
+
+          {onRemove ? (
+            <Pressable
+              style={[styles.removeButton, removing && styles.disabledText]}
+              onPress={confirmRemove}
+              accessibilityRole="button"
+              disabled={removing || saving}
+            >
+              <Text style={styles.removeButtonText}>
+                {removing ? 'Removing…' : 'Remove order'}
+              </Text>
+            </Pressable>
           ) : null}
         </ScrollView>
 
@@ -437,5 +475,20 @@ const styles = StyleSheet.create({
     color: '#b42318',
     fontSize: 14,
     fontWeight: '700',
+  },
+  removeButton: {
+    minHeight: 48,
+    marginTop: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#d92d20',
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
+  },
+  removeButtonText: {
+    color: '#b42318',
+    fontSize: 15,
+    fontWeight: '800',
   },
 });
