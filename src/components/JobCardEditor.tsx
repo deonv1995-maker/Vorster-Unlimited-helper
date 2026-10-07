@@ -16,6 +16,11 @@ import {
   type JobCard,
   type JobStatus,
 } from '../domain/jobCard';
+import {
+  formatLocalDate,
+  fromLocalDate,
+  toLocalDate,
+} from '../utils/localDate';
 
 interface JobCardEditorProps {
   visible: boolean;
@@ -23,16 +28,6 @@ interface JobCardEditorProps {
   onCancel: () => void;
   onSave: (job: JobCard) => Promise<void>;
 }
-
-const formatDate = (value: string | null) => {
-  if (!value) return 'Not selected';
-
-  return new Intl.DateTimeFormat('en-ZA', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(value));
-};
 
 export function JobCardEditor({
   visible,
@@ -48,7 +43,9 @@ export function JobCardEditor({
 
   useEffect(() => {
     setDraft(job);
-    setAmountText(job ? String(job.amountRand || '') : '');
+    setAmountText(
+      job && job.amountCents > 0 ? (job.amountCents / 100).toFixed(2) : '',
+    );
     setValidationMessage('');
     setShowDeliveryDatePicker(false);
   }, [job, visible]);
@@ -91,7 +88,7 @@ export function JobCardEditor({
         customerName,
         referenceNumber,
         location: draft.location.trim(),
-        amountRand,
+        amountCents: Math.round(amountRand * 100),
       });
     } finally {
       setSaving(false);
@@ -125,7 +122,7 @@ export function JobCardEditor({
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <FieldLabel text="Date made" />
           <View style={styles.readOnlyField}>
-            <Text style={styles.readOnlyText}>{formatDate(draft.dateMade)}</Text>
+            <Text style={styles.readOnlyText}>{formatLocalDate(draft.dateMade)}</Text>
           </View>
 
           <FieldLabel text="Customer name" />
@@ -182,7 +179,9 @@ export function JobCardEditor({
             onPress={() => setShowDeliveryDatePicker(true)}
             accessibilityRole="button"
           >
-            <Text style={styles.dateButtonText}>{formatDate(draft.deliveryDate)}</Text>
+            <Text style={styles.dateButtonText}>
+              {formatLocalDate(draft.deliveryDate)}
+            </Text>
           </Pressable>
 
           <FieldLabel text="Status" />
@@ -204,14 +203,14 @@ export function JobCardEditor({
 
         {showDeliveryDatePicker ? (
           <DateTimePicker
-            value={draft.deliveryDate ? new Date(draft.deliveryDate) : new Date()}
+            value={draft.deliveryDate ? fromLocalDate(draft.deliveryDate) : new Date()}
             mode="date"
             presentation="dialog"
             onChange={(event, date) => {
               setShowDeliveryDatePicker(false);
 
               if (event.type !== 'dismissed' && date) {
-                updateDraft('deliveryDate', date.toISOString());
+                updateDraft('deliveryDate', toLocalDate(date));
               }
             }}
           />
