@@ -1,0 +1,367 @@
+import DateTimePicker from '@expo/ui/community/datetime-picker';
+import { useEffect, useState } from 'react';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+
+import {
+  JOB_STATUSES,
+  type FulfilmentType,
+  type JobCard,
+  type JobStatus,
+} from '../domain/jobCard';
+
+interface JobCardEditorProps {
+  visible: boolean;
+  job: JobCard | null;
+  onCancel: () => void;
+  onSave: (job: JobCard) => Promise<void>;
+}
+
+const formatDate = (value: string | null) => {
+  if (!value) return 'Not selected';
+
+  return new Intl.DateTimeFormat('en-ZA', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(new Date(value));
+};
+
+export function JobCardEditor({
+  visible,
+  job,
+  onCancel,
+  onSave,
+}: JobCardEditorProps) {
+  const [draft, setDraft] = useState<JobCard | null>(job);
+  const [amountText, setAmountText] = useState('');
+  const [showDeliveryDatePicker, setShowDeliveryDatePicker] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [validationMessage, setValidationMessage] = useState('');
+
+  useEffect(() => {
+    setDraft(job);
+    setAmountText(job ? String(job.amountRand || '') : '');
+    setValidationMessage('');
+    setShowDeliveryDatePicker(false);
+  }, [job, visible]);
+
+  if (!draft) return null;
+
+  const updateDraft = <K extends keyof JobCard>(key: K, value: JobCard[K]) => {
+    setDraft((current) => (current ? { ...current, [key]: value } : current));
+  };
+
+  const chooseFulfilment = (value: FulfilmentType) => {
+    updateDraft('fulfilmentType', value);
+  };
+
+  const chooseStatus = (value: JobStatus) => {
+    updateDraft('status', value);
+  };
+
+  const handleSave = async () => {
+    const customerName = draft.customerName.trim();
+    const referenceNumber = draft.referenceNumber.trim();
+    const amountRand = Number(amountText.replace(',', '.'));
+
+    if (!customerName || !referenceNumber) {
+      setValidationMessage('Customer name and job card / quote number are required.');
+      return;
+    }
+
+    if (!Number.isFinite(amountRand) || amountRand < 0) {
+      setValidationMessage('Enter a valid amount.');
+      return;
+    }
+
+    setSaving(true);
+    setValidationMessage('');
+
+    try {
+      await onSave({
+        ...draft,
+        customerName,
+        referenceNumber,
+        location: draft.location.trim(),
+        amountRand,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onCancel}
+    >
+      <View style={styles.screen}>
+        <View style={styles.topBar}>
+          <Pressable onPress={onCancel} accessibilityRole="button">
+            <Text style={styles.cancelText}>Cancel</Text>
+          </Pressable>
+          <Text style={styles.title}>Job Card</Text>
+          <Pressable
+            onPress={handleSave}
+            accessibilityRole="button"
+            disabled={saving}
+          >
+            <Text style={[styles.saveText, saving && styles.disabledText]}>
+              {saving ? 'Saving…' : 'Save'}
+            </Text>
+          </Pressable>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <FieldLabel text="Date made" />
+          <View style={styles.readOnlyField}>
+            <Text style={styles.readOnlyText}>{formatDate(draft.dateMade)}</Text>
+          </View>
+
+          <FieldLabel text="Customer name" />
+          <TextInput
+            value={draft.customerName}
+            onChangeText={(value) => updateDraft('customerName', value)}
+            placeholder="Customer name"
+            style={styles.input}
+            autoCapitalize="words"
+          />
+
+          <FieldLabel text="Job card / Quote number" />
+          <TextInput
+            value={draft.referenceNumber}
+            onChangeText={(value) => updateDraft('referenceNumber', value)}
+            placeholder="JC-0001 or Q-0001"
+            style={styles.input}
+            autoCapitalize="characters"
+          />
+
+          <FieldLabel text="Delivery / Collection" />
+          <View style={styles.optionRow}>
+            {(['Delivery', 'Collection'] as const).map((value) => (
+              <OptionButton
+                key={value}
+                label={value}
+                selected={draft.fulfilmentType === value}
+                onPress={() => chooseFulfilment(value)}
+              />
+            ))}
+          </View>
+
+          <FieldLabel text="Location" />
+          <TextInput
+            value={draft.location}
+            onChangeText={(value) => updateDraft('location', value)}
+            placeholder="Delivery or collection location"
+            style={styles.input}
+            autoCapitalize="words"
+          />
+
+          <FieldLabel text="Amount R" />
+          <TextInput
+            value={amountText}
+            onChangeText={setAmountText}
+            placeholder="0.00"
+            style={styles.input}
+            keyboardType="decimal-pad"
+          />
+
+          <FieldLabel text="Delivery date" />
+          <Pressable
+            style={styles.dateButton}
+            onPress={() => setShowDeliveryDatePicker(true)}
+            accessibilityRole="button"
+          >
+            <Text style={styles.dateButtonText}>{formatDate(draft.deliveryDate)}</Text>
+          </Pressable>
+
+          <FieldLabel text="Status" />
+          <View style={styles.statusWrap}>
+            {JOB_STATUSES.map((status) => (
+              <OptionButton
+                key={status}
+                label={status}
+                selected={draft.status === status}
+                onPress={() => chooseStatus(status)}
+              />
+            ))}
+          </View>
+
+          {validationMessage ? (
+            <Text style={styles.validationText}>{validationMessage}</Text>
+          ) : null}
+        </ScrollView>
+
+        {showDeliveryDatePicker ? (
+          <DateTimePicker
+            value={draft.deliveryDate ? new Date(draft.deliveryDate) : new Date()}
+            mode="date"
+            presentation="dialog"
+            onChange={(event, date) => {
+              setShowDeliveryDatePicker(false);
+
+              if (event.type !== 'dismissed' && date) {
+                updateDraft('deliveryDate', date.toISOString());
+              }
+            }}
+          />
+        ) : null}
+      </View>
+    </Modal>
+  );
+}
+
+function FieldLabel({ text }: { text: string }) {
+  return <Text style={styles.label}>{text}</Text>;
+}
+
+function OptionButton({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.optionButton, selected && styles.optionButtonSelected]}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+    >
+      <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#f4f5f7',
+  },
+  topBar: {
+    minHeight: 58,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ffffff',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#d0d5dd',
+  },
+  title: {
+    color: '#101828',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  cancelText: {
+    color: '#475467',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  saveText: {
+    color: '#175cd3',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  disabledText: {
+    opacity: 0.5,
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  label: {
+    marginTop: 14,
+    marginBottom: 6,
+    color: '#344054',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  input: {
+    minHeight: 48,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#d0d5dd',
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
+    color: '#101828',
+    fontSize: 16,
+  },
+  readOnlyField: {
+    minHeight: 48,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#eaecf0',
+  },
+  readOnlyText: {
+    color: '#475467',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  optionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  statusWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  optionButton: {
+    minHeight: 42,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#d0d5dd',
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
+  },
+  optionButtonSelected: {
+    borderColor: '#101828',
+    backgroundColor: '#101828',
+  },
+  optionText: {
+    color: '#344054',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  optionTextSelected: {
+    color: '#ffffff',
+  },
+  dateButton: {
+    minHeight: 48,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#d0d5dd',
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
+  },
+  dateButtonText: {
+    color: '#175cd3',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  validationText: {
+    marginTop: 16,
+    color: '#b42318',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+});
