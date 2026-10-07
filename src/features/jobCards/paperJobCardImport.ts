@@ -239,6 +239,19 @@ export const normalizeDocumentReference = (value: string): string => {
 };
 
 const findReferenceNumber = (lines: string[], fullText: string): string => {
+  // Prefer an explicit QU/JC token anywhere in the OCR output. ML Kit can flatten
+  // two-column headers so NUMBER may be followed by REFERENCE/BACK ORDER before
+  // the actual quote number appears.
+  const explicitTokens = [
+    ...(fullText.match(/\bQ\s*U\s*[A-Z0-9]{3,14}\b/gi) ?? []),
+    ...(fullText.match(/\bJ\s*C\s*[A-Z0-9-]{2,14}\b/gi) ?? []),
+  ];
+
+  for (const token of explicitTokens) {
+    const normalized = normalizeDocumentReference(token);
+    if (normalized) return normalized;
+  }
+
   for (let index = 0; index < lines.length; index += 1) {
     const upper = normalizeUpper(lines[index] ?? '');
 
@@ -254,15 +267,6 @@ const findReferenceNumber = (lines: string[], fullText: string): string => {
 
       if (normalized) return normalized;
     }
-  }
-
-  const tokenCandidates = fullText.match(
-    /\b(?:Q\s*U|J\s*C|Q)[A-Z0-9\s-]{2,16}\b/gi,
-  );
-
-  for (const token of tokenCandidates ?? []) {
-    const normalized = normalizeDocumentReference(token);
-    if (normalized) return normalized;
   }
 
   return '';
@@ -375,11 +379,18 @@ const isPhysicalAddressLabel = (line: string) => {
   );
 };
 
-const isAddressCandidate = (line: string) => {
+const STREET_ADDRESS_HINT =
+  /\b(?:STREET|ST\.?|ROAD|RD\.?|DRIVE|DR\.?|AVENUE|AVE\.?|LANE|CLOSE|CRESCENT|PLOT|FARM|UNIT|ERF|BOULEVARD|WAY|AH)\b/i;
+
+const isAddressCandidate = (line: string, customerName = '') => {
   const upper = normalizeUpper(line);
+  const customerUpper = normalizeUpper(customerName);
 
   if (!line) return false;
   if (line.includes('@')) return false;
+  if (customerUpper && upper.includes(customerUpper)) return false;
+  if (SELLER_MARKERS.some((marker) => upper.includes(marker))) return false;
+  if (/[:;]\s*[A-Z]{2,}[0-9OQDILSB]{2,}\s*$/i.test(line)) return false;
   if (EXACT_CUSTOMER_REJECTS.has(upper)) return false;
   if (CUSTOMER_REJECT_MARKERS.some((marker) => upper.includes(marker))) return false;
   if (/^\d+(?:[.,]\d+)?%$/.test(line)) return false;
@@ -395,6 +406,56 @@ const findLocation = (lines: string[], customerName: string): string => {
     normalizeUpper(line).includes('CUSTOMER VAT'),
   );
   const customerAnchor = Math.max(customerIndex, toIndex, customerVatIndex);
+
+  const deliveryFeeIndex = lines.findIndex((line) =>
+    normalizeUpper(line).includes('DELIVERY FEE'),
+  );
+
+  // Current Vorster quotes place the customer's physical address immediately
+  // before Delivery Fee. This is a stronger anchor than the repeated
+  // "PHYSICAL ADDRESS" labels from the seller and customer columns.
+  if (deliveryFeeIndex >= 0) {
+    const windowStart = Math.max(customerAnchor + 1, deliveryFeeIndex - 10, 0);
+    const window = lines.slice(windowStart, deliveryFeeIndex);
+
+    let streetAnchor = -1;
+    for (let index = window.length - 1; index >= 0; index -= 1) {
+      const candidate = window[index] ?? '';
+      if (
+        STREET_ADDRESS_HINT.test(candidate) ||
+        /^\s*\d+[A-Za-z]?\s+\S+/.test(candidate)
+      ) {
+        streetAnchor = index;
+        break;
+      }
+    }
+
+    if (streetAnchor >= 0) {
+      const addressParts: string[] = [];
+
+      for (let index = streetAnchor; index < window.length; index += 1) {
+        const candidate = window[index] ?? '';
+        if (isAddressCandidate(candidate, customerName)) {
+          addressParts.push(candidate);
+        }
+      }
+
+      for (
+        let index = deliveryFeeIndex + 1;
+        index < Math.min(lines.length, deliveryFeeIndex + 4);
+        index += 1
+      ) {
+        const candidate = lines[index] ?? '';
+        if (/^\d{4}$/.test(candidate)) {
+          addressParts.push(candidate);
+          break;
+        }
+      }
+
+      const unique = [...new Set(addressParts.map(normalizeLine).filter(Boolean))];
+      if (unique.length) return unique.join(', ');
+    }
+  }
 
   const physicalAddressIndexes = lines
     .map((line, index) => (isPhysicalAddressLabel(line) ? index : -1))
@@ -427,7 +488,7 @@ const findLocation = (lines: string[], customerName: string): string => {
     const originalAfterLabel = line.slice(labelIndex + foundLabel.length);
     const sameLineValue = originalAfterLabel.replace(/^\s*:?\s*/, '').trim();
 
-    if (isAddressCandidate(sameLineValue)) {
+    if (isAddressCandidate(sameLineValue, customerName)) {
       addressParts.push(sameLineValue);
     }
   }
@@ -444,7 +505,7 @@ const findLocation = (lines: string[], customerName: string): string => {
       break;
     }
 
-    if (isAddressCandidate(candidate)) {
+    if (isAddressCandidate(candidate, customerName)) {
       addressParts.push(candidate);
     }
   }
@@ -452,7 +513,6 @@ const findLocation = (lines: string[], customerName: string): string => {
   const uniqueParts = [...new Set(addressParts.map(normalizeLine).filter(Boolean))];
   return uniqueParts.join(', ');
 };
-
 const findDeliveryInstructions = (lines: string[]): string => {
   const instruction = lines.find((line) => {
     const upper = normalizeUpper(line);
@@ -513,10 +573,12 @@ export function parsePaperJobCardText(text: string): PaperJobCardImportResult {
   const warnings: string[] = [];
   const job = createEmptyJobCard();
 
-  const dateMade =
-    parseSouthAfricanDate(findLabelValue(lines, ['DATE'])) ??
-    parseSouthAfricanDate(normalizedText) ??
-    job.dateMade;
+  const allPrintedDates = [...normalizedText.matchAll(/\b(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{4})\b/g)]
+    .map((match) => parseSouthAfricanDate(match[1] ?? null))
+    .filter((value): value is LocalDate => value !== null)
+    .sort();
+
+  const dateMade = allPrintedDates[0] ?? job.dateMade;
   const customerName = findCustomerName(lines);
   const location = findLocation(lines, customerName);
   const deliveryInstructions = findDeliveryInstructions(lines);

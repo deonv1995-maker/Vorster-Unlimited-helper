@@ -173,4 +173,67 @@ if (distortedResult.ok) {
   assert.match(distortedResult.job.location, /1911/);
 }
 
+
+const flattenedObservedScan = `
+QUOTE
+NUMBER:
+REFERENCE:
+DATE:
+DUE DATE:
+SALES REP:
+OVERALL DISCOUNT %:
+PAGE:
+QUOOD00077
+BACK ORDER 2
+25/09/2026
+15/10/2026
+DEON JNR VORTSER
+0.00%
+1/4
+
+FROM
+VORSTER UNLIMITED TRADING
+TO
+Disc
+CRISANDRA KWEKERY :CREO02
+CUSTOMER VAT NO: 4740209723
+POSTAL ADDRESS:
+Call Before Delivery
+PHYSICAL ADDRESS:
+VORSTER UNLIMITED TRADING
+CRISANDRA KWEKERY :CRE002
+VOKOco
+RSTER
+4J4
+V
+3 Vaal Drive, Sykviavale AH
+Vanderbijlpark
+Delivery Fee: 15%
+1911
+
+Description
+Disc %
+VAT %
+Grand Total:
+R14,303.88
+BALANCE DUE
+R14,303.88
+`;
+
+const flattenedObservedResult = parsePaperJobCardText(flattenedObservedScan);
+assert.equal(flattenedObservedResult.ok, true);
+if (flattenedObservedResult.ok) {
+  assert.equal(flattenedObservedResult.job.referenceNumber, '77');
+  assert.equal(flattenedObservedResult.job.dateMade, '2026-09-25');
+  assert.equal(flattenedObservedResult.job.customerName, 'CRISANDRA KWEKERY');
+  assert.equal(flattenedObservedResult.job.fulfilmentType, 'Delivery');
+  assert.equal(flattenedObservedResult.job.deliveryInstructions, 'Call Before Delivery');
+  assert.equal(flattenedObservedResult.job.deliveryFeePercent, 15);
+  assert.equal(flattenedObservedResult.job.amountCents, 1430388);
+  assert.match(flattenedObservedResult.job.location, /3 Vaal Drive/i);
+  assert.match(flattenedObservedResult.job.location, /Vanderbijlpark/i);
+  assert.match(flattenedObservedResult.job.location, /1911/);
+  assert.doesNotMatch(flattenedObservedResult.job.location, /VORSTER UNLIMITED TRADING/i);
+}
+
 console.log('Paper parser regression tests passed.');
