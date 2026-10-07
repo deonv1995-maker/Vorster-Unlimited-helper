@@ -18,6 +18,7 @@ import { DATABASE_NAME, migrateDatabase } from './src/data/database';
 import {
   createEmptyJobCard,
   type JobCard,
+  type JobCardSourcePage,
 } from './src/domain/jobCard';
 import { JobCardScanner } from './src/features/jobCards/JobCardScanner';
 import {
@@ -77,6 +78,7 @@ function PlannerScreen() {
   const [deliveryFilter, setDeliveryFilter] = useState<DeliveryFilter>('All');
   const [editorJob, setEditorJob] = useState<JobCard | null>(null);
   const [scannerVisible, setScannerVisible] = useState(false);
+  const [pendingScanPages, setPendingScanPages] = useState<JobCardSourcePage[] | undefined>(undefined);
   const [dateJobId, setDateJobId] = useState<string | null>(null);
 
   const today = todayLocalDate();
@@ -348,8 +350,10 @@ function PlannerScreen() {
       <JobCardScanner
         visible={scannerVisible}
         onCancel={() => setScannerVisible(false)}
-        onJobScanned={(job) => {
-          const normalizedReference = job.referenceNumber.trim().toLocaleLowerCase('en-ZA');
+        onJobScanned={(result) => {
+          const normalizedReference = result.job.referenceNumber
+            .trim()
+            .toLocaleLowerCase('en-ZA');
           const existingJob = jobs.find(
             (storedJob) =>
               storedJob.referenceNumber.trim().toLocaleLowerCase('en-ZA') ===
@@ -357,17 +361,26 @@ function PlannerScreen() {
           );
 
           setScannerVisible(false);
-          setEditorJob(existingJob ? { ...job, id: existingJob.id } : job);
+          setPendingScanPages(result.sourcePages);
+          setEditorJob(
+            existingJob
+              ? { ...result.job, id: existingJob.id }
+              : result.job,
+          );
         }}
       />
 
       <JobCardEditor
         visible={editorJob !== null}
         job={editorJob}
-        onCancel={() => setEditorJob(null)}
-        onSave={async (job) => {
-          await saveJob(job);
+        onCancel={() => {
           setEditorJob(null);
+          setPendingScanPages(undefined);
+        }}
+        onSave={async (job) => {
+          await saveJob(job, pendingScanPages);
+          setEditorJob(null);
+          setPendingScanPages(undefined);
         }}
       />
 
