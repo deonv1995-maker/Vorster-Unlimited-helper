@@ -126,4 +126,51 @@ if (multiPageResult.ok) {
   assert.equal(multiPageResult.job.amountCents, 3136899);
 }
 
+
+
+const distortedCrisandra = `
+QUOTE
+NUMBER:
+QUOOD00077
+REFERENCE:
+BACK ORDER 2
+DATE:
+25/09/2026
+DUE DATE:
+15/10/2026
+PAGE:
+1/4
+
+TO
+Disc
+CRISANDRA KWEKERY :CREO02
+CUSTOMER VAT NO: 4740209723
+POSTAL ADDRESS: PHYSICAL ADDRESS:
+Call Before Delivery
+3 Vaal Drive, Sykviavale AH
+crisranra@telkomsa.net
+Vanderbijlpark
+Delivery Fee: 15%
+1911
+Description
+Disc %
+VAT %
+BALANCE DUE
+R14,303.88
+`;
+
+const distortedResult = parsePaperJobCardText(distortedCrisandra);
+assert.equal(distortedResult.ok, true);
+if (distortedResult.ok) {
+  assert.equal(distortedResult.job.referenceNumber, '77');
+  assert.equal(distortedResult.job.customerName, 'CRISANDRA KWEKERY');
+  assert.equal(distortedResult.job.fulfilmentType, 'Delivery');
+  assert.equal(distortedResult.job.deliveryInstructions, 'Call Before Delivery');
+  assert.equal(distortedResult.job.deliveryFeePercent, 15);
+  assert.equal(distortedResult.job.amountCents, 1430388);
+  assert.match(distortedResult.job.location, /3 Vaal Drive/i);
+  assert.match(distortedResult.job.location, /Vanderbijlpark/i);
+  assert.match(distortedResult.job.location, /1911/);
+}
+
 console.log('Paper parser regression tests passed.');
