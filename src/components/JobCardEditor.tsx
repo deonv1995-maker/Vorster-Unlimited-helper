@@ -18,6 +18,7 @@ import {
   type JobCard,
   type JobStatus,
 } from '../domain/jobCard';
+import { androidTopSystemInset } from '../ui/systemInsets';
 import {
   formatLocalDate,
   fromLocalDate,
@@ -127,7 +128,11 @@ export function JobCardEditor({
     >
       <View style={styles.screen}>
         <View style={styles.topBar}>
-          <Pressable onPress={onCancel} accessibilityRole="button">
+          <Pressable
+            onPress={onCancel}
+            accessibilityRole="button"
+            style={styles.topAction}
+          >
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
           <View style={styles.titleBlock}>
@@ -140,6 +145,7 @@ export function JobCardEditor({
             onPress={handleSave}
             accessibilityRole="button"
             disabled={saving}
+            style={styles.topAction}
           >
             <Text style={[styles.saveText, saving && styles.disabledText]}>
               {saving ? 'Saving…' : 'Save'}
@@ -301,7 +307,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f4f5f7',
   },
   topBar: {
-    minHeight: 58,
+    minHeight: 58 + androidTopSystemInset,
+    paddingTop: androidTopSystemInset,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -309,6 +316,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#d0d5dd',
+  },
+  topAction: {
+    minWidth: 74,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   titleBlock: {
     alignItems: 'center',
@@ -339,7 +352,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 96,
   },
   label: {
     marginTop: 14,
