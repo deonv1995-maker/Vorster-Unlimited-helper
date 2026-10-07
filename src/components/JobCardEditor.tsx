@@ -37,6 +37,7 @@ export function JobCardEditor({
 }: JobCardEditorProps) {
   const [draft, setDraft] = useState<JobCard | null>(job);
   const [amountText, setAmountText] = useState('');
+  const [deliveryFeeText, setDeliveryFeeText] = useState('');
   const [showDeliveryDatePicker, setShowDeliveryDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [validationMessage, setValidationMessage] = useState('');
@@ -45,6 +46,12 @@ export function JobCardEditor({
     setDraft(job);
     setAmountText(
       job && job.amountCents > 0 ? (job.amountCents / 100).toFixed(2) : '',
+    );
+    setDeliveryFeeText(
+      job?.deliveryFeePercent !== null &&
+        job?.deliveryFeePercent !== undefined
+        ? String(job.deliveryFeePercent)
+        : '',
     );
     setValidationMessage('');
     setShowDeliveryDatePicker(false);
@@ -68,6 +75,10 @@ export function JobCardEditor({
     const customerName = draft.customerName.trim();
     const referenceNumber = draft.referenceNumber.trim();
     const amountRand = Number(amountText.replace(',', '.'));
+    const feePercent =
+      deliveryFeeText.trim() === ''
+        ? null
+        : Number(deliveryFeeText.replace(',', '.'));
 
     if (!customerName || !referenceNumber) {
       setValidationMessage('Customer name and job card / quote number are required.');
@@ -76,6 +87,14 @@ export function JobCardEditor({
 
     if (!Number.isFinite(amountRand) || amountRand < 0) {
       setValidationMessage('Enter a valid amount.');
+      return;
+    }
+
+    if (
+      feePercent !== null &&
+      (!Number.isFinite(feePercent) || feePercent < 0 || feePercent > 100)
+    ) {
+      setValidationMessage('Delivery fee percentage must be between 0 and 100.');
       return;
     }
 
@@ -88,6 +107,8 @@ export function JobCardEditor({
         customerName,
         referenceNumber,
         location: draft.location.trim(),
+        deliveryInstructions: draft.deliveryInstructions.trim(),
+        deliveryFeePercent: feePercent,
         amountCents: Math.round(amountRand * 100),
       });
     } finally {
@@ -138,9 +159,9 @@ export function JobCardEditor({
           <TextInput
             value={draft.referenceNumber}
             onChangeText={(value) => updateDraft('referenceNumber', value)}
-            placeholder="JC-0001 or Q-0001"
+            placeholder="Example: 77"
             style={styles.input}
-            autoCapitalize="characters"
+            keyboardType="number-pad"
           />
 
           <FieldLabel text="Delivery / Collection" />
@@ -155,13 +176,33 @@ export function JobCardEditor({
             ))}
           </View>
 
-          <FieldLabel text="Location" />
+          <FieldLabel text="Location / physical address" />
           <TextInput
             value={draft.location}
             onChangeText={(value) => updateDraft('location', value)}
-            placeholder="Delivery or collection location"
-            style={styles.input}
+            placeholder="Customer physical delivery address"
+            style={[styles.input, styles.multilineInput]}
             autoCapitalize="words"
+            multiline
+          />
+
+          <FieldLabel text="Delivery instructions" />
+          <TextInput
+            value={draft.deliveryInstructions}
+            onChangeText={(value) => updateDraft('deliveryInstructions', value)}
+            placeholder="Example: Call Before Delivery"
+            style={[styles.input, styles.multilineInput]}
+            autoCapitalize="sentences"
+            multiline
+          />
+
+          <FieldLabel text="Delivery fee %" />
+          <TextInput
+            value={deliveryFeeText}
+            onChangeText={setDeliveryFeeText}
+            placeholder="Example: 15"
+            style={styles.input}
+            keyboardType="decimal-pad"
           />
 
           <FieldLabel text="Amount R" />
@@ -294,12 +335,17 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 48,
     paddingHorizontal: 12,
+    paddingVertical: 10,
     borderWidth: 1,
     borderColor: '#d0d5dd',
     borderRadius: 10,
     backgroundColor: '#ffffff',
     color: '#101828',
     fontSize: 16,
+  },
+  multilineInput: {
+    minHeight: 76,
+    textAlignVertical: 'top',
   },
   readOnlyField: {
     minHeight: 48,
