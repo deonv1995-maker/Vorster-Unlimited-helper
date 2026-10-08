@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { JobCard, JobCardSourcePage } from '../domain/jobCard';
+import type { JobCard } from '../domain/jobCard';
 import {
   DELIVERY_VEHICLES,
   type DeliveryAllocation,
@@ -250,20 +250,3 @@ export async function validateJobCapacityAfterDateChange(
   await validateRequestedAllocations(db, job, allocations);
 }
 
-export async function listStoredSourcePages(
-  db: SQLiteDatabase,
-  jobCardId: string,
-): Promise<JobCardSourcePage[]> {
-  return db.getAllAsync<JobCardSourcePage>(
-    `
-      SELECT
-        page_number AS pageNumber,
-        raw_text AS rawText,
-        captured_at AS capturedAt
-      FROM job_card_source_pages
-      WHERE job_card_id = ?
-      ORDER BY page_number ASC
-    `,
-    jobCardId,
-  );
-}
