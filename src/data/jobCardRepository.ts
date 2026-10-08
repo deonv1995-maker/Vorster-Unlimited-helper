@@ -121,6 +121,14 @@ export async function saveJobCard(
     );
 
     if (sourcePages !== undefined) {
+      // Parsed item rows are derived from OCR source pages. Invalidate them
+      // whenever a scan is replaced so the next order-load view reparses the
+      // newest document rather than showing stale products.
+      await db.runAsync(
+        'DELETE FROM job_card_items WHERE job_card_id = ?',
+        job.id,
+      );
+
       await db.runAsync(
         'DELETE FROM job_card_source_pages WHERE job_card_id = ?',
         job.id,
