@@ -9,7 +9,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test:parser": "tsx scripts/test-paper-parser.ts"
+    "test:parser": "tsx scripts/test-paper-parser.ts",
+    "generate:icon": "node scripts/generate-app-icon.mjs",
+    "postinstall": "node scripts/generate-app-icon.mjs"
   },
   "dependencies": {
     "@expo/ui": "~57.0.22",
