@@ -72,6 +72,7 @@ export async function saveJobCard(
 
   await db.withTransactionAsync(async () => {
     const areaName = job.deliveryArea.trim();
+    let persistedAreaName = areaName || 'Other';
 
     if (areaName) {
       const existingArea = await db.getFirstAsync<{ name: string }>(
@@ -79,7 +80,9 @@ export async function saveJobCard(
         areaName,
       );
 
-      if (!existingArea) {
+      if (existingArea) {
+        persistedAreaName = existingArea.name;
+      } else {
         await db.runAsync(
           `
             INSERT INTO delivery_areas (
@@ -136,7 +139,7 @@ export async function saveJobCard(
       job.customerName.trim(),
       job.referenceNumber.trim(),
       job.fulfilmentType,
-      job.deliveryArea,
+      persistedAreaName,
       job.location.trim(),
       job.deliveryInstructions.trim(),
       job.deliveryFeePercent,
