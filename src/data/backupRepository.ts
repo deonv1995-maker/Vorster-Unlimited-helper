@@ -60,7 +60,7 @@ async function insertBackupRows(
   const sql = 'INSERT INTO ' + table + ' (' + columns.join(', ') +
     ') VALUES (' + columns.map(() => '?').join(', ') + ')';
   for (const row of rows) {
-    await db.runAsync(sql, columns.map((column) => row[column]));
+    await db.runAsync(sql, columns.map((column) => row[column] ?? null));
   }
 }
 
