@@ -103,7 +103,7 @@ export function validateBackup(raw: unknown): JobBackup {
       requireValid(isObject(row), table + ' contains an invalid row');
       requireValid(Object.keys(row).length === names.length, table + ' contains incompatible columns');
       for (const name of names) {
-        requireValid(Object.prototype.hasOwnProperty.call(row, name) && validateValue(row[name], columns[name]), table + '.' + name + ' has an invalid value');
+        requireValid(Object.prototype.hasOwnProperty.call(row, name) && validateValue(row[name], columns[name]!), table + '.' + name + ' has an invalid value');
       }
     }
   }
@@ -153,7 +153,7 @@ export function validateBackup(raw: unknown): JobBackup {
     ['delivery_allocations', ['job_card_id', 'vehicle_id']],
   ] as const) {
     const combinations = new Set<string>();
-    for (const row of tables[table]) {
+    for (const row of tables[table] as BackupRow[]) {
       const key = columns.map((column) => JSON.stringify(row[column])).join('|');
       requireValid(!combinations.has(key), table + ' contains duplicate job entries');
       combinations.add(key);
