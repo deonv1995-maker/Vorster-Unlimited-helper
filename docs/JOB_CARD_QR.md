@@ -17,7 +17,8 @@ The schema identifier lets future app versions support new fields without breaki
   "customerName": "Green Olive",
   "referenceNumber": "JC-1245",
   "fulfilmentType": "Delivery",
-  "location": "Zambezi",
+  "deliveryArea": "Pretoria",
+  "location": "Zambezi, Pretoria",
   "amountCents": 845000,
   "deliveryDate": "2026-10-10",
   "status": "Pending"
@@ -34,7 +35,8 @@ The schema identifier lets future app versions support new fields without breaki
 
 - `dateMade` — `YYYY-MM-DD`
 - `fulfilmentType` — `Delivery` or `Collection`
-- `location`
+- `deliveryArea` — `Pretoria`, `Centurion`, `East Rand`, `Alberton`, or `Other`; if omitted, the app attempts to infer it from `location`
+- `location` — retained as background address data for route/directions use
 - `amountCents` — integer cents, so R8,450.00 is `845000`
 - `deliveryDate` — `YYYY-MM-DD`
 - `status` — one of the app's supported job statuses
