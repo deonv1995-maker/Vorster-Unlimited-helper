@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type { JobCard, JobCardSourcePage } from '../../domain/jobCard';
 import { deleteJobCard, listJobCards, saveJobCard } from '../../data/jobCardRepository';
+import { validateJobCapacityAfterDateChange } from '../../data/orderPlanningRepository';
 
 export function useJobCards() {
   const db = useSQLiteContext();
@@ -35,6 +36,7 @@ export function useJobCards() {
 
   const save = useCallback(
     async (job: JobCard, sourcePages?: JobCardSourcePage[]) => {
+      await validateJobCapacityAfterDateChange(db, job);
       await saveJobCard(db, job, sourcePages);
       await refresh();
     },
