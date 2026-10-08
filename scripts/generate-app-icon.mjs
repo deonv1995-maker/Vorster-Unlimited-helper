@@ -136,27 +136,52 @@ const drawRoundedRect = (
   }
 };
 
-const drawU = (pixels, offsetX, offsetY, color) => {
-  const left = 520 + offsetX;
-  const right = 820 + offsetX;
-  const top = 235 + offsetY;
-  const joinY = 575 + offsetY;
-  const centerX = 670 + offsetX;
-  const centerY = 575 + offsetY;
-  const outerRadius = 155;
-  const innerRadius = 73;
+const drawU = (
+  pixels,
+  offsetX,
+  offsetY,
+  color,
+  scale = 1,
+  translateX = 0,
+  translateY = 0,
+) => {
+  const transformX = (value) => translateX + value * scale;
+  const transformY = (value) => translateY + value * scale;
 
-  drawRect(pixels, left, top, left + 105, joinY + 8, color);
-  drawRect(pixels, right - 105, top, right, joinY + 8, color);
+  const left = transformX(520 + offsetX);
+  const right = transformX(820 + offsetX);
+  const top = transformY(235 + offsetY);
+  const joinY = transformY(575 + offsetY);
+  const centerX = transformX(670 + offsetX);
+  const centerY = transformY(575 + offsetY);
+  const outerRadius = 155 * scale;
+  const innerRadius = 73 * scale;
+
+  drawRect(
+    pixels,
+    Math.round(left),
+    Math.round(top),
+    Math.round(left + 105 * scale),
+    Math.round(joinY + 8 * scale),
+    color,
+  );
+  drawRect(
+    pixels,
+    Math.round(right - 105 * scale),
+    Math.round(top),
+    Math.round(right),
+    Math.round(joinY + 8 * scale),
+    color,
+  );
 
   for (
-    let y = Math.max(0, centerY);
-    y <= Math.min(SIZE - 1, centerY + outerRadius);
+    let y = Math.max(0, Math.floor(centerY));
+    y <= Math.min(SIZE - 1, Math.ceil(centerY + outerRadius));
     y += 1
   ) {
     for (
-      let x = Math.max(0, centerX - outerRadius);
-      x <= Math.min(SIZE - 1, centerX + outerRadius);
+      let x = Math.max(0, Math.floor(centerX - outerRadius));
+      x <= Math.min(SIZE - 1, Math.ceil(centerX + outerRadius));
       x += 1
     ) {
       const distance = Math.hypot(x + 0.5 - centerX, y + 0.5 - centerY);
@@ -236,13 +261,29 @@ const drawMark = (pixels, scale = 1, translateX = 0, translateY = 0) => {
   drawV(10, 14, COLORS.shadow);
 
   const shadowU = createPixels(false);
-  drawU(shadowU, 10, 14, COLORS.shadow);
+  drawU(
+    shadowU,
+    10,
+    14,
+    COLORS.shadow,
+    scale,
+    translateX,
+    translateY,
+  );
   composite(pixels, shadowU);
 
   drawV(0, 0, COLORS.white);
 
   const greenLayer = createPixels(false);
-  drawU(greenLayer, 0, 0, COLORS.green);
+  drawU(
+    greenLayer,
+    0,
+    0,
+    COLORS.green,
+    scale,
+    translateX,
+    translateY,
+  );
   composite(pixels, greenLayer);
 
   const [stemAx, stemAy] = point(748, 295);
