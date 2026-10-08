@@ -83,3 +83,18 @@ Implementation notes:
 ## Order removal
 
 Existing saved orders can be removed from the Job Card editor. Removal requires an explicit destructive confirmation. Deleting a job also deletes its persisted multi-page OCR source data so no orphaned scan records remain. Unsaved new jobs do not show the Remove order action.
+
+
+### Increment 5 — order contents and vehicle capacity
+
+- Scanned OCR pages are the source of truth for order line items.
+- Structured order items are stored separately from the JobCard row as code, description, quantity, page number, and display order.
+- Existing scanned jobs are backfilled on demand the first time the Amount cell is opened.
+- Tapping **Amount R** opens the Order Load screen instead of the basic Job Card editor.
+- The Order Load screen shows scanned items and quantities plus delivery vehicle capacity controls.
+- Vehicle allocations are stored separately from JobCard data so an order can be split across more than one vehicle.
+- The initial fleet model is Vehicle 1 and Vehicle 2; vehicle identity is centralized so names can be replaced later without changing allocation records.
+- Vehicle load is selected in 5% steps or quick values (0/25/50/75/100).
+- Capacity is enforced per delivery date and vehicle. Saving an allocation that would make a vehicle exceed 100% is rejected.
+- Changing a delivery date also revalidates any existing vehicle allocations before the date change is saved.
+- Rescanning a job invalidates its derived structured item rows while preserving the OCR source pages as the source of truth.
