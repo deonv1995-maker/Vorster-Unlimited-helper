@@ -2,6 +2,7 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -14,6 +15,7 @@ import {
 
 import { DeliveryCalendarModal } from './src/components/DeliveryCalendarModal';
 import { JobCardEditor } from './src/components/JobCardEditor';
+import { OrderLoadModal } from './src/components/OrderLoadModal';
 import { DATABASE_NAME, migrateDatabase } from './src/data/database';
 import { DELIVERY_AREA_CONFIG } from './src/domain/deliveryAreas';
 import {
@@ -29,6 +31,7 @@ import {
   type DeliveryFilter,
 } from './src/features/jobCards/jobPlanning';
 import { useJobCards } from './src/features/jobCards/useJobCards';
+import { useOrderPlanning, type LoadedOrderPlan } from './src/features/jobCards/useOrderPlanning';
 import { androidTopSystemInset } from './src/ui/systemInsets';
 import {
   formatLocalDate,
@@ -74,6 +77,7 @@ export default function App() {
 
 function PlannerScreen() {
   const { jobs, loading, saveJob, removeJob } = useJobCards();
+  const { loadOrderPlan, saveAllocations } = useOrderPlanning();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<PlannerFilter>('All');
   const [deliveryFilter, setDeliveryFilter] = useState<DeliveryFilter>('All');
@@ -81,6 +85,9 @@ function PlannerScreen() {
   const [scannerVisible, setScannerVisible] = useState(false);
   const [pendingScanPages, setPendingScanPages] = useState<JobCardSourcePage[] | undefined>(undefined);
   const [dateJobId, setDateJobId] = useState<string | null>(null);
+  const [loadJob, setLoadJob] = useState<JobCard | null>(null);
+  const [orderPlan, setOrderPlan] = useState<LoadedOrderPlan | null>(null);
+  const [orderPlanLoading, setOrderPlanLoading] = useState(false);
 
   const today = todayLocalDate();
 
@@ -127,12 +134,39 @@ function PlannerScreen() {
       return;
     }
 
-    await saveJob({
-      ...dateJob,
-      deliveryDate: date,
-    });
+    try {
+      await saveJob({
+        ...dateJob,
+        deliveryDate: date,
+      });
+      setDateJobId(null);
+    } catch (error) {
+      Alert.alert(
+        'Vehicle capacity conflict',
+        error instanceof Error
+          ? error.message
+          : 'This delivery date would overbook a vehicle.',
+      );
+    }
+  };
 
-    setDateJobId(null);
+  const openOrderLoad = async (job: JobCard) => {
+    setLoadJob(job);
+    setOrderPlan(null);
+    setOrderPlanLoading(true);
+
+    try {
+      const plan = await loadOrderPlan(job);
+      setOrderPlan(plan);
+    } catch (error) {
+      Alert.alert(
+        'Order details could not be opened',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
+      setLoadJob(null);
+    } finally {
+      setOrderPlanLoading(false);
+    }
   };
 
   return (
@@ -301,10 +335,12 @@ function PlannerScreen() {
                           onPress={openEditor}
                         />
                       )}
-                      <Cell
+                      <AmountCell
                         width={COLUMN_WIDTHS.amountRand}
-                        text={formatRand(job.amountCents)}
-                        onPress={openEditor}
+                        amount={formatRand(job.amountCents)}
+                        onPress={() => {
+                          void openOrderLoad(job);
+                        }}
                       />
                       <Pressable
                         style={[
@@ -404,6 +440,35 @@ function PlannerScreen() {
         }}
       />
 
+      <OrderLoadModal
+        visible={loadJob !== null}
+        job={loadJob}
+        items={orderPlan?.items ?? []}
+        allocations={orderPlan?.allocations ?? []}
+        capacities={orderPlan?.capacities ?? []}
+        loading={orderPlanLoading}
+        onCancel={() => {
+          setLoadJob(null);
+          setOrderPlan(null);
+        }}
+        onSave={async (allocations) => {
+          if (!loadJob) return;
+
+          const capacities = await saveAllocations(loadJob, allocations);
+          setOrderPlan((current) =>
+            current
+              ? {
+                  ...current,
+                  allocations,
+                  capacities,
+                }
+              : current,
+          );
+          setLoadJob(null);
+          setOrderPlan(null);
+        }}
+      />
+
       <DeliveryCalendarModal
         visible={dateJob !== null}
         selectedDate={dateJob?.deliveryDate ?? null}
@@ -415,6 +480,28 @@ function PlannerScreen() {
         }}
       />
     </SafeAreaView>
+  );
+}
+
+function AmountCell({
+  width,
+  amount,
+  onPress,
+}: {
+  width: number;
+  amount: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      style={[styles.cell, styles.amountCell, { width }]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${amount}. Open order items and vehicle load.`}
+    >
+      <Text style={styles.amountText}>{amount}</Text>
+      <Text style={styles.amountHint}>Items / load</Text>
+    </Pressable>
   );
 }
 
@@ -642,6 +729,20 @@ const styles = StyleSheet.create({
   },
   emphasizedCellText: {
     fontWeight: '800',
+  },
+  amountCell: {
+    alignItems: 'flex-start',
+  },
+  amountText: {
+    color: '#175cd3',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  amountHint: {
+    marginTop: 2,
+    color: '#667085',
+    fontSize: 10,
+    fontWeight: '700',
   },
   areaCell: {
     alignItems: 'center',
