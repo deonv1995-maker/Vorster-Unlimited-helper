@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   createDeliveryArea,
   listDeliveryAreas,
+  removeDeliveryArea,
 } from '../../data/deliveryAreaRepository';
 import type { DeliveryAreaDefinition } from '../../domain/deliveryAreas';
 
@@ -45,10 +46,20 @@ export function useDeliveryAreas() {
     [db, refreshDeliveryAreas],
   );
 
+  const deleteDeliveryArea = useCallback(
+    async (name: string) => {
+      const affectedJobs = await removeDeliveryArea(db, name);
+      await refreshDeliveryAreas();
+      return affectedJobs;
+    },
+    [db, refreshDeliveryAreas],
+  );
+
   return {
     deliveryAreas,
     loadingDeliveryAreas,
     addDeliveryArea,
+    deleteDeliveryArea,
     refreshDeliveryAreas,
   };
 }

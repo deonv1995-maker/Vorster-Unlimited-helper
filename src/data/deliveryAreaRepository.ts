@@ -99,3 +99,48 @@ export async function createDeliveryArea(
     isSystem: false,
   };
 }
+
+
+export async function removeDeliveryArea(
+  db: SQLiteDatabase,
+  name: string,
+): Promise<number> {
+  const trimmedName = name.trim();
+
+  if (!trimmedName) {
+    throw new Error('Choose a delivery area to remove.');
+  }
+
+  if (trimmedName.toLocaleLowerCase('en-ZA') === 'other') {
+    throw new Error('Other is the fallback area and cannot be removed.');
+  }
+
+  const existing = await db.getFirstAsync<{ name: string }>(
+    'SELECT name FROM delivery_areas WHERE LOWER(name) = LOWER(?) LIMIT 1',
+    trimmedName,
+  );
+
+  if (!existing) {
+    throw new Error('That delivery area no longer exists.');
+  }
+
+  const countRow = await db.getFirstAsync<{ count: number }>(
+    'SELECT COUNT(*) AS count FROM job_cards WHERE LOWER(delivery_area) = LOWER(?)',
+    existing.name,
+  );
+  const affectedJobs = Number(countRow?.count ?? 0);
+
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      "UPDATE job_cards SET delivery_area = 'Other' WHERE LOWER(delivery_area) = LOWER(?)",
+      existing.name,
+    );
+
+    await db.runAsync(
+      'DELETE FROM delivery_areas WHERE LOWER(name) = LOWER(?)',
+      existing.name,
+    );
+  });
+
+  return affectedJobs;
+}

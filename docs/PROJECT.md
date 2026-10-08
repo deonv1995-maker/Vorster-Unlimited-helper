@@ -112,3 +112,13 @@ Existing saved orders can be removed from the Job Card editor. Removal requires 
 - Area names are unique case-insensitively.
 - The status workflow is now Pending → Scheduled → In Production → In Dispatch → Ready → Delivered / Collected, with On Hold and Canceled available as exception states.
 - Existing `Cancelled` rows migrate automatically to `Canceled`.
+
+
+### Increment 7 — delivery-area removal and branded icon
+
+- Delivery areas can be managed from the Job Card editor.
+- `Other` is the permanent fallback area and cannot be removed.
+- Removing any other area first reassigns saved jobs using it to `Other`, then removes the area definition.
+- Area removal always requires an explicit destructive confirmation.
+- The Android launcher icon now uses a Vorster Unlimited `VU` monogram with a botanical green accent on a dark background.
+- Icon PNGs are generated deterministically during `npm install` from `scripts/generate-app-icon.mjs`, so CI and local builds use the same assets without storing generated binary files in Git.
