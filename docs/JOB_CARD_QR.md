@@ -35,11 +35,11 @@ The schema identifier lets future app versions support new fields without breaki
 
 - `dateMade` — `YYYY-MM-DD`
 - `fulfilmentType` — `Delivery` or `Collection`
-- `deliveryArea` — `Pretoria`, `Centurion`, `East Rand`, `Alberton`, or `Other`; if omitted, the app attempts to infer it from `location`
+- `deliveryArea` — any non-empty saved area name; if omitted, the app attempts to infer a default area from `location`
 - `location` — retained as background address data for route/directions use
 - `amountCents` — integer cents, so R8,450.00 is `845000`
 - `deliveryDate` — `YYYY-MM-DD`
-- `status` — one of the app's supported job statuses
+- `status` — Pending, Scheduled, In Production, In Dispatch, Ready, Delivered, Collected, On Hold, or Canceled. Legacy `Cancelled` QR values are normalized to `Canceled`.
 
 Missing optional fields use safe defaults and are reviewed in the editor before saving.
 
