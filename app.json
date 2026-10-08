@@ -2,12 +2,12 @@
   "expo": {
     "name": "Vorster Unlimited Helper",
     "slug": "vorster-unlimited-helper",
-    "version": "0.1.6",
+    "version": "0.1.7",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "android": {
       "package": "za.co.vorsterunlimited.helper",
-      "versionCode": 8
+      "versionCode": 9
     },
     "ios": {
       "bundleIdentifier": "za.co.vorsterunlimited.helper"
