@@ -19,15 +19,17 @@ The main screen is intentionally spreadsheet-like: one row represents one job ca
 
 Delivery date is edited through the app's delivery-planning calendar, which can show colour dots for areas already booked on each date.
 
-## V1 status values
+## Job status values
 
 - Pending
+- Scheduled
 - In Production
+- In Dispatch
 - Ready
 - Delivered
 - Collected
 - On Hold
-- Cancelled
+- Canceled
 
 ## Architecture decisions
 
@@ -76,8 +78,10 @@ Implementation notes:
 - Overdue, today, tomorrow, and completed delivery dates have distinct visual states
 - Planning comparisons use date-only values, not timestamps, to avoid timezone rollover
 - "This Week" means today through the coming Sunday
-- Delivery areas are colour-coded from one shared configuration: Pretoria green, Centurion light green, East Rand blue, Alberton light blue, and Other grey
-- The delivery-date calendar shows one coloured dot per area already scheduled on each date, excluding the job currently being edited and closed/cancelled deliveries
+- Delivery areas are persistent user-managed data. The app seeds Pretoria green, Centurion light green, East Rand blue, Alberton light blue, and Other grey.
+- New delivery areas can be created directly from the Job Card Delivery Area section by entering a name and selecting a colour.
+- The same saved area colour is used in the planner table and delivery-date calendar.
+- The delivery-date calendar shows one coloured dot per area already scheduled on each date, excluding the job currently being edited and closed/canceled deliveries
 
 
 ## Order removal
@@ -98,3 +102,13 @@ Existing saved orders can be removed from the Job Card editor. Removal requires 
 - Capacity is enforced per delivery date and vehicle. Saving an allocation that would make a vehicle exceed 100% is rejected.
 - Changing a delivery date also revalidates any existing vehicle allocations before the date change is saved.
 - Rescanning a job invalidates its derived structured item rows while preserving the OCR source pages as the source of truth.
+
+
+### Increment 6 — configurable areas and expanded workflow
+
+- SQLite schema v5 stores delivery areas as records rather than a compile-time list.
+- Default delivery areas are seeded during migration, while user-created areas persist across app restarts and updates.
+- Imported/scanned jobs with a previously unknown area automatically register that area with a neutral grey colour so the JobCard never references an unavailable area.
+- Area names are unique case-insensitively.
+- The status workflow is now Pending → Scheduled → In Production → In Dispatch → Ready → Delivered / Collected, with On Hold and Canceled available as exception states.
+- Existing `Cancelled` rows migrate automatically to `Canceled`.
