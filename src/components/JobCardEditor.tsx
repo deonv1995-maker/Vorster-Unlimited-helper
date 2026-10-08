@@ -40,6 +40,7 @@ interface JobCardEditorProps {
     name: string,
     color: string,
   ) => Promise<DeliveryAreaDefinition>;
+  onRemoveDeliveryArea: (name: string) => Promise<number>;
 }
 
 export function JobCardEditor({
@@ -51,6 +52,7 @@ export function JobCardEditor({
   calendarJobs,
   deliveryAreas,
   onAddDeliveryArea,
+  onRemoveDeliveryArea,
 }: JobCardEditorProps) {
   const [draft, setDraft] = useState<JobCard | null>(job);
   const [amountText, setAmountText] = useState('');
@@ -66,6 +68,8 @@ export function JobCardEditor({
   );
   const [areaSaving, setAreaSaving] = useState(false);
   const [areaError, setAreaError] = useState('');
+  const [showManageAreas, setShowManageAreas] = useState(false);
+  const [removingAreaName, setRemovingAreaName] = useState<string | null>(null);
 
   useEffect(() => {
     setDraft(job);
@@ -85,6 +89,8 @@ export function JobCardEditor({
     setNewAreaName('');
     setNewAreaColor(DELIVERY_AREA_COLOR_PALETTE[0]);
     setAreaError('');
+    setShowManageAreas(false);
+    setRemovingAreaName(null);
   }, [job, visible]);
 
   if (!draft) return null;
@@ -113,6 +119,45 @@ export function JobCardEditor({
         ...deliveryAreas,
         findDeliveryAreaDefinition([], draft.deliveryArea),
       ];
+
+  const confirmRemoveDeliveryArea = (areaName: string) => {
+    Alert.alert(
+      'Remove delivery area?',
+      `Remove ${areaName}? Any saved orders using this area will be moved to Other.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            setRemovingAreaName(areaName);
+            setAreaError('');
+
+            void onRemoveDeliveryArea(areaName)
+              .then((affectedJobs) => {
+                if (draft.deliveryArea === areaName) {
+                  chooseDeliveryArea('Other');
+                }
+
+                if (affectedJobs > 0) {
+                  setValidationMessage(
+                    `${affectedJobs} saved order${affectedJobs === 1 ? '' : 's'} moved to Other because ${areaName} was removed.`,
+                  );
+                }
+              })
+              .catch((error) => {
+                setAreaError(
+                  error instanceof Error
+                    ? error.message
+                    : 'The delivery area could not be removed.',
+                );
+              })
+              .finally(() => setRemovingAreaName(null));
+          },
+        },
+      ],
+    );
+  };
 
   const handleAddDeliveryArea = async () => {
     setAreaSaving(true);
@@ -330,6 +375,62 @@ export function JobCardEditor({
                   {showAddArea ? 'Cancel new area' : '+ Add delivery area'}
                 </Text>
               </Pressable>
+
+              <Pressable
+                style={styles.manageAreaButton}
+                onPress={() => {
+                  setShowManageAreas((current) => !current);
+                  setAreaError('');
+                }}
+                accessibilityRole="button"
+              >
+                <Text style={styles.manageAreaButtonText}>
+                  {showManageAreas ? 'Hide area manager' : 'Manage areas'}
+                </Text>
+              </Pressable>
+
+              {showManageAreas ? (
+                <View style={styles.manageAreaCard}>
+                  <Text style={styles.addAreaTitle}>Remove delivery areas</Text>
+                  <Text style={styles.manageAreaHelp}>
+                    Other is kept as the fallback. Orders from a removed area are moved to Other.
+                  </Text>
+
+                  {deliveryAreas
+                    .filter((area) => area.name !== 'Other')
+                    .map((area) => (
+                      <View key={area.name} style={styles.manageAreaRow}>
+                        <View style={styles.manageAreaNameWrap}>
+                          <View
+                            style={[
+                              styles.areaButtonDot,
+                              { backgroundColor: area.color },
+                            ]}
+                          />
+                          <Text style={styles.manageAreaName}>{area.name}</Text>
+                        </View>
+                        <Pressable
+                          style={[
+                            styles.areaRemoveButton,
+                            removingAreaName === area.name && styles.disabledText,
+                          ]}
+                          onPress={() => confirmRemoveDeliveryArea(area.name)}
+                          disabled={removingAreaName !== null}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove delivery area ${area.name}`}
+                        >
+                          <Text style={styles.areaRemoveButtonText}>
+                            {removingAreaName === area.name ? 'Removing…' : 'Remove'}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    ))}
+
+                  {areaError ? (
+                    <Text style={styles.areaErrorText}>{areaError}</Text>
+                  ) : null}
+                </View>
+              ) : null}
 
               {showAddArea ? (
                 <View style={styles.addAreaCard}>
@@ -646,6 +747,69 @@ const styles = StyleSheet.create({
     borderColor: '#d0d5dd',
     borderRadius: 12,
     backgroundColor: '#ffffff',
+  },
+  manageAreaButton: {
+    minHeight: 42,
+    marginTop: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#d0d5dd',
+    borderRadius: 10,
+    backgroundColor: '#f9fafb',
+  },
+  manageAreaButtonText: {
+    color: '#344054',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  manageAreaCard: {
+    marginTop: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#d0d5dd',
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+  },
+  manageAreaHelp: {
+    marginBottom: 10,
+    color: '#667085',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  manageAreaRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#eaecf0',
+  },
+  manageAreaNameWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  manageAreaName: {
+    color: '#101828',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  areaRemoveButton: {
+    minHeight: 36,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#fda29b',
+    borderRadius: 8,
+    backgroundColor: '#fff5f4',
+  },
+  areaRemoveButtonText: {
+    color: '#b42318',
+    fontSize: 12,
+    fontWeight: '800',
   },
   addAreaTitle: {
     marginBottom: 8,
