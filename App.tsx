@@ -80,8 +80,12 @@ export default function App() {
 }
 
 function PlannerScreen() {
-  const { jobs, loading, saveJob, removeJob } = useJobCards();
-  const { deliveryAreas, addDeliveryArea } = useDeliveryAreas();
+  const { jobs, loading, saveJob, removeJob, refresh } = useJobCards();
+  const {
+    deliveryAreas,
+    addDeliveryArea,
+    deleteDeliveryArea,
+  } = useDeliveryAreas();
   const { loadOrderPlan, saveAllocations } = useOrderPlanning();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<PlannerFilter>('All');
@@ -441,6 +445,11 @@ function PlannerScreen() {
         calendarJobs={jobs}
         deliveryAreas={deliveryAreas}
         onAddDeliveryArea={addDeliveryArea}
+        onRemoveDeliveryArea={async (name) => {
+          const affectedJobs = await deleteDeliveryArea(name);
+          await refresh();
+          return affectedJobs;
+        }}
         onSave={async (job) => {
           await saveJob(job, pendingScanPages);
           setEditorJob(null);
