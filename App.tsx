@@ -288,11 +288,19 @@ function PlannerScreen() {
                         text={job.fulfilmentType}
                         onPress={openEditor}
                       />
-                      <AreaCell
-                        width={COLUMN_WIDTHS.deliveryArea}
-                        area={job.deliveryArea}
-                        onPress={openEditor}
-                      />
+                      {job.fulfilmentType === 'Delivery' ? (
+                        <AreaCell
+                          width={COLUMN_WIDTHS.deliveryArea}
+                          area={job.deliveryArea}
+                          onPress={openEditor}
+                        />
+                      ) : (
+                        <Cell
+                          width={COLUMN_WIDTHS.deliveryArea}
+                          text="—"
+                          onPress={openEditor}
+                        />
+                      )}
                       <Cell
                         width={COLUMN_WIDTHS.amountRand}
                         text={formatRand(job.amountCents)}
