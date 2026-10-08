@@ -380,8 +380,10 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   areaDot: {
-    width: 7,
-    height: 7,
+    width: 8,
+    height: 8,
+    borderWidth: 1,
+    borderColor: '#ffffff',
     borderRadius: 4,
   },
   legend: {
