@@ -18,7 +18,7 @@ The parser uses document anchors rather than one fixed page coordinate.
 | Customer name | Customer name under the `TO` block |
 | Job card / quote # | Numeric tail of `NUMBER`; leading zero padding and QU/JC prefixes are removed |
 | Delivery / Collection | Delivery when a delivery fee or delivery instruction is detected |
-| Location | Customer `PHYSICAL ADDRESS`, including postal code when OCR places it below the delivery fee |
+| Delivery area | Inferred from the customer `PHYSICAL ADDRESS`; the raw address is retained only for future routing/directions |
 | Delivery instructions | Recognized instructions such as `Call Before Delivery` |
 | Delivery fee % | `Delivery Fee: n%` |
 | Amount | Prefer `BALANCE DUE`, then `GRAND TOTAL`, then `TOTAL DUE` |
@@ -58,3 +58,4 @@ A later scan of the same normalized job/quote number matches the existing row. W
 - Amounts are stored as integer cents.
 - Printed handwritten notes are not used as authoritative structured data.
 - Product line-item tables are retained in the saved page OCR but are not yet promoted into structured product rows.
+- Delivery-area inference uses the single shared delivery-area definition used by the editor, planner table, and calendar.
