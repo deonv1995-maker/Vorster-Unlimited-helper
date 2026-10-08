@@ -17,7 +17,10 @@ import { DeliveryCalendarModal } from './src/components/DeliveryCalendarModal';
 import { JobCardEditor } from './src/components/JobCardEditor';
 import { OrderLoadModal } from './src/components/OrderLoadModal';
 import { DATABASE_NAME, migrateDatabase } from './src/data/database';
-import { DELIVERY_AREA_CONFIG } from './src/domain/deliveryAreas';
+import {
+  findDeliveryAreaDefinition,
+  type DeliveryAreaDefinition,
+} from './src/domain/deliveryAreas';
 import {
   createEmptyJobCard,
   type JobCard,
@@ -30,6 +33,7 @@ import {
   matchesDeliveryFilter,
   type DeliveryFilter,
 } from './src/features/jobCards/jobPlanning';
+import { useDeliveryAreas } from './src/features/jobCards/useDeliveryAreas';
 import { useJobCards } from './src/features/jobCards/useJobCards';
 import { useOrderPlanning, type LoadedOrderPlan } from './src/features/jobCards/useOrderPlanning';
 import { androidTopSystemInset } from './src/ui/systemInsets';
@@ -65,7 +69,7 @@ const isCompleted = (job: JobCard) =>
   job.status === 'Delivered' || job.status === 'Collected';
 
 const isActive = (job: JobCard) =>
-  !isCompleted(job) && job.status !== 'Cancelled';
+  !isCompleted(job) && job.status !== 'Canceled';
 
 export default function App() {
   return (
@@ -77,6 +81,7 @@ export default function App() {
 
 function PlannerScreen() {
   const { jobs, loading, saveJob, removeJob } = useJobCards();
+  const { deliveryAreas, addDeliveryArea } = useDeliveryAreas();
   const { loadOrderPlan, saveAllocations } = useOrderPlanning();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<PlannerFilter>('All');
@@ -326,6 +331,7 @@ function PlannerScreen() {
                         <AreaCell
                           width={COLUMN_WIDTHS.deliveryArea}
                           area={job.deliveryArea}
+                          deliveryAreas={deliveryAreas}
                           onPress={openEditor}
                         />
                       ) : (
@@ -433,6 +439,8 @@ function PlannerScreen() {
           setPendingScanPages(undefined);
         }}
         calendarJobs={jobs}
+        deliveryAreas={deliveryAreas}
+        onAddDeliveryArea={addDeliveryArea}
         onSave={async (job) => {
           await saveJob(job, pendingScanPages);
           setEditorJob(null);
@@ -473,6 +481,7 @@ function PlannerScreen() {
         visible={dateJob !== null}
         selectedDate={dateJob?.deliveryDate ?? null}
         jobs={jobs}
+        deliveryAreas={deliveryAreas}
         currentJobId={dateJob?.id}
         onCancel={() => setDateJobId(null)}
         onSelectDate={(date) => {
@@ -508,13 +517,15 @@ function AmountCell({
 function AreaCell({
   width,
   area,
+  deliveryAreas,
   onPress,
 }: {
   width: number;
   area: JobCard['deliveryArea'];
+  deliveryAreas: DeliveryAreaDefinition[];
   onPress: () => void;
 }) {
-  const config = DELIVERY_AREA_CONFIG[area];
+  const config = findDeliveryAreaDefinition(deliveryAreas, area);
 
   return (
     <Pressable

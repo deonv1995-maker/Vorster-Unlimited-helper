@@ -14,9 +14,10 @@ import appConfig from '../../app.json';
 
 import { DeliveryCalendarModal } from './DeliveryCalendarModal';
 import {
-  DELIVERY_AREAS,
-  DELIVERY_AREA_CONFIG,
+  DELIVERY_AREA_COLOR_PALETTE,
+  findDeliveryAreaDefinition,
   type DeliveryArea,
+  type DeliveryAreaDefinition,
 } from '../domain/deliveryAreas';
 import {
   JOB_STATUSES,
@@ -34,6 +35,11 @@ interface JobCardEditorProps {
   onSave: (job: JobCard) => Promise<void>;
   onRemove?: (job: JobCard) => Promise<void>;
   calendarJobs: JobCard[];
+  deliveryAreas: DeliveryAreaDefinition[];
+  onAddDeliveryArea: (
+    name: string,
+    color: string,
+  ) => Promise<DeliveryAreaDefinition>;
 }
 
 export function JobCardEditor({
@@ -43,6 +49,8 @@ export function JobCardEditor({
   onSave,
   onRemove,
   calendarJobs,
+  deliveryAreas,
+  onAddDeliveryArea,
 }: JobCardEditorProps) {
   const [draft, setDraft] = useState<JobCard | null>(job);
   const [amountText, setAmountText] = useState('');
@@ -51,6 +59,13 @@ export function JobCardEditor({
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [validationMessage, setValidationMessage] = useState('');
+  const [showAddArea, setShowAddArea] = useState(false);
+  const [newAreaName, setNewAreaName] = useState('');
+  const [newAreaColor, setNewAreaColor] = useState<string>(
+    DELIVERY_AREA_COLOR_PALETTE[0],
+  );
+  const [areaSaving, setAreaSaving] = useState(false);
+  const [areaError, setAreaError] = useState('');
 
   useEffect(() => {
     setDraft(job);
@@ -66,6 +81,10 @@ export function JobCardEditor({
     setValidationMessage('');
     setRemoving(false);
     setShowDeliveryDatePicker(false);
+    setShowAddArea(false);
+    setNewAreaName('');
+    setNewAreaColor(DELIVERY_AREA_COLOR_PALETTE[0]);
+    setAreaError('');
   }, [job, visible]);
 
   if (!draft) return null;
@@ -84,6 +103,36 @@ export function JobCardEditor({
 
   const chooseDeliveryArea = (value: DeliveryArea) => {
     updateDraft('deliveryArea', value);
+  };
+
+  const areaOptions = deliveryAreas.some(
+    (area) => area.name === draft.deliveryArea,
+  )
+    ? deliveryAreas
+    : [
+        ...deliveryAreas,
+        findDeliveryAreaDefinition([], draft.deliveryArea),
+      ];
+
+  const handleAddDeliveryArea = async () => {
+    setAreaSaving(true);
+    setAreaError('');
+
+    try {
+      const created = await onAddDeliveryArea(newAreaName, newAreaColor);
+      chooseDeliveryArea(created.name);
+      setNewAreaName('');
+      setNewAreaColor(DELIVERY_AREA_COLOR_PALETTE[0]);
+      setShowAddArea(false);
+    } catch (error) {
+      setAreaError(
+        error instanceof Error
+          ? error.message
+          : 'The delivery area could not be added.',
+      );
+    } finally {
+      setAreaSaving(false);
+    }
   };
 
   const handleSave = async () => {
@@ -229,19 +278,18 @@ export function JobCardEditor({
             <>
               <FieldLabel text="Delivery area" />
               <View style={styles.areaWrap}>
-                {DELIVERY_AREAS.map((area) => {
-                  const config = DELIVERY_AREA_CONFIG[area];
-                  const selected = draft.deliveryArea === area;
+                {areaOptions.map((area) => {
+                  const selected = draft.deliveryArea === area.name;
 
                   return (
                     <Pressable
-                      key={area}
-                      onPress={() => chooseDeliveryArea(area)}
+                      key={area.name}
+                      onPress={() => chooseDeliveryArea(area.name)}
                       style={[
                         styles.areaButton,
                         {
-                          borderColor: config.color,
-                          backgroundColor: selected ? config.color : '#ffffff',
+                          borderColor: area.color,
+                          backgroundColor: selected ? area.color : '#ffffff',
                         },
                       ]}
                       accessibilityRole="button"
@@ -252,23 +300,98 @@ export function JobCardEditor({
                           styles.areaButtonDot,
                           {
                             backgroundColor: selected
-                              ? config.textColor
-                              : config.color,
+                              ? area.textColor
+                              : area.color,
                           },
                         ]}
                       />
                       <Text
                         style={[
                           styles.areaButtonText,
-                          { color: selected ? config.textColor : '#344054' },
+                          { color: selected ? area.textColor : '#344054' },
                         ]}
                       >
-                        {area}
+                        {area.name}
                       </Text>
                     </Pressable>
                   );
                 })}
               </View>
+
+              <Pressable
+                style={styles.addAreaButton}
+                onPress={() => {
+                  setShowAddArea((current) => !current);
+                  setAreaError('');
+                }}
+                accessibilityRole="button"
+              >
+                <Text style={styles.addAreaButtonText}>
+                  {showAddArea ? 'Cancel new area' : '+ Add delivery area'}
+                </Text>
+              </Pressable>
+
+              {showAddArea ? (
+                <View style={styles.addAreaCard}>
+                  <Text style={styles.addAreaTitle}>New delivery area</Text>
+                  <TextInput
+                    value={newAreaName}
+                    onChangeText={setNewAreaName}
+                    placeholder="Example: West Rand"
+                    style={styles.input}
+                    autoCapitalize="words"
+                    maxLength={40}
+                  />
+
+                  <Text style={styles.colourLabel}>Choose colour</Text>
+                  <View style={styles.colourWrap}>
+                    {DELIVERY_AREA_COLOR_PALETTE.map((color) => {
+                      const selected = newAreaColor === color;
+
+                      return (
+                        <Pressable
+                          key={color}
+                          onPress={() => setNewAreaColor(color)}
+                          style={[
+                            styles.colourSwatchOuter,
+                            selected && styles.colourSwatchSelected,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected }}
+                          accessibilityLabel={`Choose colour ${color}`}
+                        >
+                          <View
+                            style={[
+                              styles.colourSwatch,
+                              { backgroundColor: color },
+                            ]}
+                          />
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+
+                  {areaError ? (
+                    <Text style={styles.areaErrorText}>{areaError}</Text>
+                  ) : null}
+
+                  <Pressable
+                    style={[
+                      styles.saveAreaButton,
+                      areaSaving && styles.disabledText,
+                    ]}
+                    onPress={() => {
+                      void handleAddDeliveryArea();
+                    }}
+                    disabled={areaSaving}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.saveAreaButtonText}>
+                      {areaSaving ? 'Adding…' : 'Add area'}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
             </>
           ) : null}
 
@@ -345,6 +468,7 @@ export function JobCardEditor({
           visible={showDeliveryDatePicker}
           selectedDate={draft.deliveryDate}
           jobs={calendarJobs}
+          deliveryAreas={deliveryAreas}
           currentJobId={draft.id}
           onCancel={() => setShowDeliveryDatePicker(false)}
           onSelectDate={(date) => {
@@ -497,6 +621,83 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   areaButtonText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  addAreaButton: {
+    minHeight: 42,
+    marginTop: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#98a2b3',
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
+  },
+  addAreaButtonText: {
+    color: '#344054',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  addAreaCard: {
+    marginTop: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#d0d5dd',
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+  },
+  addAreaTitle: {
+    marginBottom: 8,
+    color: '#101828',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  colourLabel: {
+    marginTop: 12,
+    marginBottom: 7,
+    color: '#475467',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  colourWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  colourSwatchOuter: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    borderRadius: 18,
+  },
+  colourSwatchSelected: {
+    borderColor: '#101828',
+  },
+  colourSwatch: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+  },
+  areaErrorText: {
+    marginTop: 10,
+    color: '#b42318',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  saveAreaButton: {
+    minHeight: 44,
+    marginTop: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: '#101828',
+  },
+  saveAreaButtonText: {
+    color: '#ffffff',
     fontSize: 14,
     fontWeight: '800',
   },

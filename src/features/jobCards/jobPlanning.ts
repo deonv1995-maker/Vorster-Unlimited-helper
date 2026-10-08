@@ -30,7 +30,7 @@ export type DeliveryUrgency =
 const isClosed = (job: JobCard) =>
   job.status === 'Delivered' ||
   job.status === 'Collected' ||
-  job.status === 'Cancelled';
+  job.status === 'Canceled';
 
 const addDays = (date: LocalDate, days: number): LocalDate => {
   const parsed = fromLocalDate(date);

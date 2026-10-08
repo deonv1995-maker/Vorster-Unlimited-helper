@@ -150,7 +150,7 @@ export async function getVehicleCapacitiesForDate(
       INNER JOIN job_cards jc ON jc.id = da.job_card_id
       WHERE jc.delivery_date = ?
         AND jc.fulfilment_type = 'Delivery'
-        AND jc.status NOT IN ('Delivered', 'Collected', 'Cancelled')
+        AND jc.status NOT IN ('Delivered', 'Collected', 'Canceled')
         AND (? IS NULL OR jc.id <> ?)
       GROUP BY da.vehicle_id
     `,
