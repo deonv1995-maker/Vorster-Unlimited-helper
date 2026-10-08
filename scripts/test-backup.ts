@@ -64,17 +64,17 @@ assert.equal(restored.counts.delivery_allocations, 1);
 }
 {
   const invalid = clone(backup);
-  invalid.tables.job_card_items[0].job_card_id = 'deleted-job';
+  invalid.tables.job_card_items[0]!.job_card_id = 'deleted-job';
   shouldReject(invalid, /orphaned records/);
 }
 {
   const invalid = clone(backup);
-  invalid.tables.job_cards[0].delivery_area = 'Unknown';
+  invalid.tables.job_cards[0]!.delivery_area = 'Unknown';
   shouldReject(invalid, /unknown area/);
 }
 {
   const invalid = clone(backup);
-  invalid.tables.delivery_allocations[0].load_percent = 120;
+  invalid.tables.delivery_allocations[0]!.load_percent = 120;
   shouldReject(invalid, /vehicle load percentage/);
 }
 {
@@ -87,7 +87,7 @@ assert.equal(restored.counts.delivery_allocations, 1);
 }
 {
   const invalid = clone(backup);
-  delete invalid.tables.job_cards[0].delivery_instructions;
+  delete invalid.tables.job_cards[0]!.delivery_instructions;
   shouldReject(invalid, /incompatible columns/);
 }
 {
