@@ -12,12 +12,12 @@ The main screen is intentionally spreadsheet-like: one row represents one job ca
 2. Customer name
 3. Job card / quote number
 4. Delivery / collection
-5. Location
+5. Delivery area
 6. Amount (ZAR)
 7. Delivery date
 8. Status
 
-Delivery date is editable from the table through the native platform date picker.
+Delivery date is edited through the app's delivery-planning calendar, which can show colour dots for areas already booked on each date.
 
 ## V1 status values
 
@@ -58,7 +58,7 @@ Implementation notes:
 - Money is stored as integer cents and formatted as ZAR in the UI.
 - Date-made and delivery-date values are stored as date-only `YYYY-MM-DD` values to avoid timezone rollover.
 - Manual entry and future scanner imports write through the same `JobCard` model and repository.
-- SQLite schema migrations are versioned. Schema v2 adds structured delivery instructions, delivery-fee percentage, and per-job source-page OCR storage.
+- SQLite schema migrations are versioned. Schema v2 adds structured delivery instructions, delivery-fee percentage, and per-job source-page OCR storage. Schema v3 adds the delivery-area planning field while retaining the scanned street address as background route data.
 
 ### Increment 3 — scanning
 - Camera permission flow
@@ -66,7 +66,7 @@ Implementation notes:
 - Duplicate-safe matching by job card / quote reference number
 - Review in the normal Job Card editor before saving
 - On-device paper OCR supports the legacy Rock Pots / DK Pots job-card layout and the current Vorster Unlimited quote layout
-- Paper OCR extracts the TO customer, normalized trailing document number, delivery address/instructions/fee, amount, and shared job-level fields, then always routes through the normal editor for review
+- Paper OCR extracts the TO customer, normalized trailing document number, delivery address/instructions/fee, amount, and shared job-level fields. The address is used to infer the planning area and is retained for future routing, while the user plans with Area rather than the raw address.
 - Paper scanning supports multi-page sessions and persists each page's raw OCR text for future line-item extraction
 - Printed Due Date is not mapped to Delivery Date; the app keeps operational delivery planning separate
 
@@ -76,6 +76,8 @@ Implementation notes:
 - Overdue, today, tomorrow, and completed delivery dates have distinct visual states
 - Planning comparisons use date-only values, not timestamps, to avoid timezone rollover
 - "This Week" means today through the coming Sunday
+- Delivery areas are colour-coded from one shared configuration: Pretoria green, Centurion light green, East Rand blue, Alberton light blue, and Other grey
+- The delivery-date calendar shows one coloured dot per area already scheduled on each date, excluding the job currently being edited and closed/cancelled deliveries
 
 
 ## Order removal
