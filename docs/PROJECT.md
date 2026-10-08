@@ -122,3 +122,16 @@ Existing saved orders can be removed from the Job Card editor. Removal requires 
 - Area removal always requires an explicit destructive confirmation.
 - The Android launcher icon now uses a Vorster Unlimited `VU` monogram with a botanical green accent on a dark background.
 - Icon PNGs are generated deterministically during `npm install` from `scripts/generate-app-icon.mjs`, so CI and local builds use the same assets without storing generated binary files in Git.
+
+
+### Increment 8 — portable backup and guarded restore (Build 11)
+
+- The Backup & Restore screen opens from the main planner header.
+- Manual JSON export captures a consistent snapshot of schema-v5 data: jobs, areas and colours, OCR text, parsed line items, and vehicle allocations.
+- The user must explicitly save the file to Drive or Files through Android's sharing sheet; opening or closing the sheet does not guarantee that a backup was saved.
+- Backups may contain private customer details; store and share them securely.
+- Restore first previews and validates the backup's format, schema version, table columns, counts, foreign references, uniqueness and load percentages.
+- Restore runs in an exclusive SQLite transaction and refuses to overwrite existing job data or customized area definitions. It is intended for a fresh installation.
+- Imported data retains the original identifiers and vehicle allocations. Foreign-key and active vehicle-capacity checks run before commit; errors roll back the restore.
+- Local SQLite content is not automatically backed up. Normal signed APK upgrades retain app data, while uninstalling or clearing app storage can erase it.
+- Backups fail closed if a later schema version is introduced without a corresponding backup-contract migration.
