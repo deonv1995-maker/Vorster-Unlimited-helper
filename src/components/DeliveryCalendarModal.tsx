@@ -9,9 +9,9 @@ import {
 } from 'react-native';
 
 import {
-  DELIVERY_AREAS,
-  DELIVERY_AREA_CONFIG,
+  findDeliveryAreaDefinition,
   type DeliveryArea,
+  type DeliveryAreaDefinition,
 } from '../domain/deliveryAreas';
 import type { JobCard } from '../domain/jobCard';
 import { androidTopSystemInset } from '../ui/systemInsets';
@@ -26,6 +26,7 @@ interface DeliveryCalendarModalProps {
   visible: boolean;
   selectedDate: LocalDate | null;
   jobs: JobCard[];
+  deliveryAreas: DeliveryAreaDefinition[];
   currentJobId?: string | null;
   onCancel: () => void;
   onSelectDate: (date: LocalDate) => void;
@@ -35,7 +36,7 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
 const isOpenDelivery = (job: JobCard) =>
   job.fulfilmentType === 'Delivery' &&
-  job.status !== 'Cancelled' &&
+  job.status !== 'Canceled' &&
   job.status !== 'Delivered' &&
   job.status !== 'Collected' &&
   job.deliveryDate !== null;
@@ -82,6 +83,7 @@ export function DeliveryCalendarModal({
   visible,
   selectedDate,
   jobs,
+  deliveryAreas,
   currentJobId,
   onCancel,
   onSelectDate,
@@ -108,16 +110,19 @@ export function DeliveryCalendarModal({
       const current = schedule.get(job.deliveryDate) ?? [];
       if (!current.includes(job.deliveryArea)) {
         current.push(job.deliveryArea);
+        const order = new Map(
+          deliveryAreas.map((area, index) => [area.name, index]),
+        );
         current.sort(
           (left, right) =>
-            DELIVERY_AREAS.indexOf(left) - DELIVERY_AREAS.indexOf(right),
+            (order.get(left) ?? 9999) - (order.get(right) ?? 9999),
         );
         schedule.set(job.deliveryDate, current);
       }
     }
 
     return schedule;
-  }, [currentJobId, jobs]);
+  }, [currentJobId, deliveryAreas, jobs]);
 
   return (
     <Modal
@@ -219,7 +224,12 @@ export function DeliveryCalendarModal({
                         key={area}
                         style={[
                           styles.areaDot,
-                          { backgroundColor: DELIVERY_AREA_CONFIG[area].color },
+                          {
+                            backgroundColor: findDeliveryAreaDefinition(
+                              deliveryAreas,
+                              area,
+                            ).color,
+                          },
                         ]}
                       />
                     ))}
@@ -234,15 +244,15 @@ export function DeliveryCalendarModal({
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.legend}
           >
-            {DELIVERY_AREAS.map((area) => (
-              <View key={area} style={styles.legendItem}>
+            {deliveryAreas.map((area) => (
+              <View key={area.name} style={styles.legendItem}>
                 <View
                   style={[
                     styles.legendDot,
-                    { backgroundColor: DELIVERY_AREA_CONFIG[area].color },
+                    { backgroundColor: area.color },
                   ]}
                 />
-                <Text style={styles.legendText}>{area}</Text>
+                <Text style={styles.legendText}>{area.name}</Text>
               </View>
             ))}
           </ScrollView>
