@@ -19,6 +19,7 @@ export async function migrateDatabase(db: SQLiteDatabase) {
       customer_name TEXT NOT NULL,
       reference_number TEXT NOT NULL,
       fulfilment_type TEXT NOT NULL CHECK (fulfilment_type IN ('Delivery', 'Collection')),
+      delivery_area TEXT NOT NULL DEFAULT 'Other',
       location TEXT NOT NULL DEFAULT '',
       amount_cents INTEGER NOT NULL DEFAULT 0,
       delivery_date TEXT,
