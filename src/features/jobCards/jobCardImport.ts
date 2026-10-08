@@ -36,9 +36,14 @@ const isNonEmptyString = (value: unknown): value is string =>
 const isFulfilmentType = (value: unknown): value is FulfilmentType =>
   value === 'Delivery' || value === 'Collection';
 
-const isJobStatus = (value: unknown): value is JobStatus =>
-  typeof value === 'string' &&
-  JOB_STATUSES.some((status) => status === value);
+const normalizeJobStatus = (value: unknown): JobStatus | null => {
+  if (value === 'Cancelled') return 'Canceled';
+
+  return typeof value === 'string' &&
+    JOB_STATUSES.some((status) => status === value)
+    ? (value as JobStatus)
+    : null;
+};
 
 const isLocalDate = (value: unknown): value is LocalDate => {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -104,7 +109,10 @@ export function parseJobCardQr(data: string): JobCardImportResult {
     return { ok: false, message: 'The QR code contains an invalid amount.' };
   }
 
-  if (payload.status !== undefined && !isJobStatus(payload.status)) {
+  const normalizedStatus =
+    payload.status === undefined ? null : normalizeJobStatus(payload.status);
+
+  if (payload.status !== undefined && normalizedStatus === null) {
     return { ok: false, message: 'The QR code contains an invalid status.' };
   }
 
@@ -133,7 +141,7 @@ export function parseJobCardQr(data: string): JobCardImportResult {
       deliveryDate: isLocalDate(payload.deliveryDate)
         ? payload.deliveryDate
         : null,
-      status: isJobStatus(payload.status) ? payload.status : job.status,
+      status: normalizedStatus ?? job.status,
     },
   };
 }
