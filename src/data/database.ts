@@ -123,7 +123,7 @@ export async function migrateDatabase(db: SQLiteDatabase) {
       CREATE TABLE IF NOT EXISTS delivery_allocations (
         id TEXT PRIMARY KEY NOT NULL,
         job_card_id TEXT NOT NULL,
-        vehicle_id TEXT NOT NULL CHECK (vehicle_id IN ('vehicle-1', 'vehicle-2')),
+        vehicle_id TEXT NOT NULL,
         load_percent INTEGER NOT NULL CHECK (load_percent >= 0 AND load_percent <= 100),
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
