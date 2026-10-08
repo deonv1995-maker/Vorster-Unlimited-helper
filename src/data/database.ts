@@ -1,5 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { inferDeliveryAreaFromAddress } from '../domain/deliveryAreas';
+
 export const DATABASE_NAME = 'vorster-unlimited-helper.db';
 
 interface UserVersionRow {
@@ -73,5 +75,30 @@ export async function migrateDatabase(db: SQLiteDatabase) {
 
       PRAGMA user_version = 2;
     `);
+  }
+
+  if (currentVersion < 3) {
+    const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(job_cards)');
+    const columnNames = new Set(columns.map((column) => column.name));
+
+    if (!columnNames.has('delivery_area')) {
+      await db.execAsync(
+        "ALTER TABLE job_cards ADD COLUMN delivery_area TEXT NOT NULL DEFAULT 'Other';",
+      );
+    }
+
+    const existingJobs = await db.getAllAsync<{ id: string; location: string }>(
+      'SELECT id, location FROM job_cards',
+    );
+
+    for (const job of existingJobs) {
+      await db.runAsync(
+        'UPDATE job_cards SET delivery_area = ? WHERE id = ?',
+        inferDeliveryAreaFromAddress(job.location),
+        job.id,
+      );
+    }
+
+    await db.execAsync('PRAGMA user_version = 3;');
   }
 }
