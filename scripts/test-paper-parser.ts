@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 
-import { inferDeliveryAreaFromAddress } from '../src/domain/deliveryAreas';
+import {
+  getContrastTextColor,
+  inferDeliveryAreaFromAddress,
+} from '../src/domain/deliveryAreas';
+import { JOB_STATUSES } from '../src/domain/jobCard';
 import { parseOrderItemsFromSourcePages } from '../src/features/jobCards/orderItemImport';
 import {
   parsePaperJobCardPages,
@@ -323,4 +327,21 @@ assert.deepEqual(
   ],
 );
 
-console.log('Paper parser, delivery-area, and order-item regression tests passed.');
+assert.deepEqual(JOB_STATUSES, [
+  'Pending',
+  'Scheduled',
+  'In Production',
+  'In Dispatch',
+  'Ready',
+  'Delivered',
+  'Collected',
+  'On Hold',
+  'Canceled',
+]);
+
+assert.equal(getContrastTextColor('#FFFFFF'), '#101828');
+assert.equal(getContrastTextColor('#1565C0'), '#FFFFFF');
+
+console.log(
+  'Paper parser, delivery-area, status, and order-item regression tests passed.',
+);
