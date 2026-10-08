@@ -126,6 +126,10 @@ export function JobCardEditor({
         deliveryFeePercent: feePercent,
         amountCents: Math.round(amountRand * 100),
       });
+    } catch (error) {
+      setValidationMessage(
+        error instanceof Error ? error.message : 'The job card could not be saved.',
+      );
     } finally {
       setSaving(false);
     }
