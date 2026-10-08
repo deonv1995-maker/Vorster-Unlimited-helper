@@ -27,3 +27,6 @@ jobs:
 
       - name: Paper parser regression tests
         run: npm run test:parser
+
+      - name: Backup format regression tests
+        run: npm run test:backup

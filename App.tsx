@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { BackupManager } from './src/components/BackupManager';
 import { DeliveryCalendarModal } from './src/components/DeliveryCalendarModal';
 import { JobCardEditor } from './src/components/JobCardEditor';
 import { OrderLoadModal } from './src/components/OrderLoadModal';
@@ -85,6 +86,7 @@ function PlannerScreen() {
     deliveryAreas,
     addDeliveryArea,
     deleteDeliveryArea,
+    refreshDeliveryAreas,
   } = useDeliveryAreas();
   const { loadOrderPlan, saveAllocations } = useOrderPlanning();
   const [query, setQuery] = useState('');
@@ -92,6 +94,7 @@ function PlannerScreen() {
   const [deliveryFilter, setDeliveryFilter] = useState<DeliveryFilter>('All');
   const [editorJob, setEditorJob] = useState<JobCard | null>(null);
   const [scannerVisible, setScannerVisible] = useState(false);
+  const [backupVisible, setBackupVisible] = useState(false);
   const [pendingScanPages, setPendingScanPages] = useState<JobCardSourcePage[] | undefined>(undefined);
   const [dateJobId, setDateJobId] = useState<string | null>(null);
   const [loadJob, setLoadJob] = useState<JobCard | null>(null);
@@ -183,9 +186,19 @@ function PlannerScreen() {
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
-        <View>
-          <Text style={styles.eyebrow}>VORSTER UNLIMITED</Text>
-          <Text style={styles.title}>Job Card Planner</Text>
+        <View style={styles.headerHeadingRow}>
+          <View style={styles.headerHeading}>
+            <Text style={styles.eyebrow}>VORSTER UNLIMITED</Text>
+            <Text style={styles.title}>Job Card Planner</Text>
+          </View>
+          <Pressable
+            style={styles.backupButton}
+            accessibilityRole="button"
+            accessibilityLabel="Backup and restore job data"
+            onPress={() => setBackupVisible(true)}
+          >
+            <Text style={styles.backupButtonText}>Backup</Text>
+          </Pressable>
         </View>
 
         <View style={styles.primaryActions}>
@@ -403,6 +416,15 @@ function PlannerScreen() {
         </ScrollView>
       )}
 
+      <BackupManager
+        visible={backupVisible}
+        onClose={() => setBackupVisible(false)}
+        onRestored={async () => {
+          await refresh();
+          await refreshDeliveryAreas();
+        }}
+      />
+
       <JobCardScanner
         visible={scannerVisible}
         onCancel={() => setScannerVisible(false)}
@@ -606,6 +628,30 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     gap: 14,
     backgroundColor: '#ffffff',
+  },
+  headerHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  headerHeading: {
+    flex: 1,
+  },
+  backupButton: {
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#174c38',
+    borderRadius: 10,
+    backgroundColor: '#f0f8f3',
+  },
+  backupButtonText: {
+    fontWeight: '800',
+    color: '#174c38',
+    fontSize: 13,
   },
   eyebrow: {
     fontSize: 11,
