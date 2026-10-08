@@ -1,4 +1,3 @@
-import DateTimePicker from '@expo/ui/community/datetime-picker';
 import { useEffect, useState } from 'react';
 import {
   Alert,
@@ -13,6 +12,12 @@ import {
 
 import appConfig from '../../app.json';
 
+import { DeliveryCalendarModal } from './DeliveryCalendarModal';
+import {
+  DELIVERY_AREAS,
+  DELIVERY_AREA_CONFIG,
+  type DeliveryArea,
+} from '../domain/deliveryAreas';
 import {
   JOB_STATUSES,
   type FulfilmentType,
@@ -20,11 +25,7 @@ import {
   type JobStatus,
 } from '../domain/jobCard';
 import { androidTopSystemInset } from '../ui/systemInsets';
-import {
-  formatLocalDate,
-  fromLocalDate,
-  toLocalDate,
-} from '../utils/localDate';
+import { formatLocalDate } from '../utils/localDate';
 
 interface JobCardEditorProps {
   visible: boolean;
@@ -32,6 +33,7 @@ interface JobCardEditorProps {
   onCancel: () => void;
   onSave: (job: JobCard) => Promise<void>;
   onRemove?: (job: JobCard) => Promise<void>;
+  calendarJobs: JobCard[];
 }
 
 export function JobCardEditor({
@@ -40,6 +42,7 @@ export function JobCardEditor({
   onCancel,
   onSave,
   onRemove,
+  calendarJobs,
 }: JobCardEditorProps) {
   const [draft, setDraft] = useState<JobCard | null>(job);
   const [amountText, setAmountText] = useState('');
@@ -77,6 +80,10 @@ export function JobCardEditor({
 
   const chooseStatus = (value: JobStatus) => {
     updateDraft('status', value);
+  };
+
+  const chooseDeliveryArea = (value: DeliveryArea) => {
+    updateDraft('deliveryArea', value);
   };
 
   const handleSave = async () => {
@@ -214,15 +221,48 @@ export function JobCardEditor({
             ))}
           </View>
 
-          <FieldLabel text="Location / physical address" />
-          <TextInput
-            value={draft.location}
-            onChangeText={(value) => updateDraft('location', value)}
-            placeholder="Customer physical delivery address"
-            style={[styles.input, styles.multilineInput]}
-            autoCapitalize="words"
-            multiline
-          />
+          {draft.fulfilmentType === 'Delivery' ? (
+            <>
+              <FieldLabel text="Delivery area" />
+              <View style={styles.areaWrap}>
+                {DELIVERY_AREAS.map((area) => {
+                  const config = DELIVERY_AREA_CONFIG[area];
+                  const selected = draft.deliveryArea === area;
+
+                  return (
+                    <Pressable
+                      key={area}
+                      onPress={() => chooseDeliveryArea(area)}
+                      style={[
+                        styles.areaButton,
+                        {
+                          borderColor: config.color,
+                          backgroundColor: selected ? config.color : '#ffffff',
+                        },
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                    >
+                      <View
+                        style={[
+                          styles.areaButtonDot,
+                          { backgroundColor: config.color },
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          styles.areaButtonText,
+                          { color: selected ? config.textColor : '#344054' },
+                        ]}
+                      >
+                        {area}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          ) : null}
 
           <FieldLabel text="Delivery instructions" />
           <TextInput
@@ -293,20 +333,17 @@ export function JobCardEditor({
           ) : null}
         </ScrollView>
 
-        {showDeliveryDatePicker ? (
-          <DateTimePicker
-            value={draft.deliveryDate ? fromLocalDate(draft.deliveryDate) : new Date()}
-            mode="date"
-            presentation="dialog"
-            onChange={(event, date) => {
-              setShowDeliveryDatePicker(false);
-
-              if (event.type !== 'dismissed' && date) {
-                updateDraft('deliveryDate', toLocalDate(date));
-              }
-            }}
-          />
-        ) : null}
+        <DeliveryCalendarModal
+          visible={showDeliveryDatePicker}
+          selectedDate={draft.deliveryDate}
+          jobs={calendarJobs}
+          currentJobId={draft.id}
+          onCancel={() => setShowDeliveryDatePicker(false)}
+          onSelectDate={(date) => {
+            updateDraft('deliveryDate', date);
+            setShowDeliveryDatePicker(false);
+          }}
+        />
       </View>
     </Modal>
   );
@@ -429,6 +466,31 @@ const styles = StyleSheet.create({
   optionRow: {
     flexDirection: 'row',
     gap: 8,
+  },
+  areaWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  areaButton: {
+    minHeight: 42,
+    minWidth: 116,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    borderWidth: 2,
+    borderRadius: 10,
+  },
+  areaButtonDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  areaButtonText: {
+    fontSize: 14,
+    fontWeight: '800',
   },
   statusWrap: {
     flexDirection: 'row',
