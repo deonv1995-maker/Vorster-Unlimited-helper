@@ -1,6 +1,9 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { inferDeliveryAreaFromAddress } from '../domain/deliveryAreas';
+import {
+  DEFAULT_DELIVERY_AREAS,
+  inferDeliveryAreaFromAddress,
+} from '../domain/deliveryAreas';
 
 export const DATABASE_NAME = 'vorster-unlimited-helper.db';
 
@@ -139,5 +142,84 @@ export async function migrateDatabase(db: SQLiteDatabase) {
 
       PRAGMA user_version = 4;
     `);
+  }
+
+  if (currentVersion < 5) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS delivery_areas (
+        name TEXT PRIMARY KEY NOT NULL,
+        color TEXT NOT NULL,
+        text_color TEXT NOT NULL,
+        sort_order INTEGER NOT NULL,
+        is_system INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_delivery_areas_sort
+        ON delivery_areas(sort_order, name);
+
+      UPDATE job_cards
+      SET status = 'Canceled'
+      WHERE status = 'Cancelled';
+    `);
+
+    const now = new Date().toISOString();
+
+    for (const area of DEFAULT_DELIVERY_AREAS) {
+      await db.runAsync(
+        `
+          INSERT OR IGNORE INTO delivery_areas (
+            name,
+            color,
+            text_color,
+            sort_order,
+            is_system,
+            created_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+        `,
+        area.name,
+        area.color,
+        area.textColor,
+        area.sortOrder,
+        area.isSystem ? 1 : 0,
+        now,
+      );
+    }
+
+    const existingAreaNames = await db.getAllAsync<{ delivery_area: string }>(
+      `
+        SELECT DISTINCT delivery_area
+        FROM job_cards
+        WHERE TRIM(delivery_area) <> ''
+      `,
+    );
+
+    for (const row of existingAreaNames) {
+      const exists = await db.getFirstAsync<{ name: string }>(
+        'SELECT name FROM delivery_areas WHERE LOWER(name) = LOWER(?) LIMIT 1',
+        row.delivery_area,
+      );
+
+      if (!exists) {
+        await db.runAsync(
+          `
+            INSERT INTO delivery_areas (
+              name,
+              color,
+              text_color,
+              sort_order,
+              is_system,
+              created_at
+            )
+            VALUES (?, '#98A2B3', '#FFFFFF', 900, 0, ?)
+          `,
+          row.delivery_area,
+          now,
+        );
+      }
+    }
+
+    await db.execAsync('PRAGMA user_version = 5;');
   }
 }
