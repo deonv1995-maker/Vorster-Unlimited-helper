@@ -1,3 +1,4 @@
+import { type DeliveryArea } from './deliveryAreas';
 import {
   todayLocalDate,
   type LocalDate,
@@ -23,6 +24,7 @@ export interface JobCard {
   customerName: string;
   referenceNumber: string;
   fulfilmentType: FulfilmentType;
+  deliveryArea: DeliveryArea;
   location: string;
   deliveryInstructions: string;
   deliveryFeePercent: number | null;
@@ -46,6 +48,7 @@ export const createEmptyJobCard = (): JobCard => ({
   customerName: '',
   referenceNumber: '',
   fulfilmentType: 'Delivery',
+  deliveryArea: 'Other',
   location: '',
   deliveryInstructions: '',
   deliveryFeePercent: null,
