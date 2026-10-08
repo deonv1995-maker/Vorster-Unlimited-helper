@@ -1,4 +1,8 @@
 import {
+  inferDeliveryAreaFromAddress,
+  isDeliveryArea,
+} from '../../domain/deliveryAreas';
+import {
   JOB_STATUSES,
   createEmptyJobCard,
   type FulfilmentType,
@@ -15,6 +19,7 @@ interface JobCardQrPayload {
   customerName?: unknown;
   referenceNumber?: unknown;
   fulfilmentType?: unknown;
+  deliveryArea?: unknown;
   location?: unknown;
   amountCents?: unknown;
   deliveryDate?: unknown;
@@ -104,6 +109,11 @@ export function parseJobCardQr(data: string): JobCardImportResult {
   }
 
   const job = createEmptyJobCard();
+  const location =
+    typeof payload.location === 'string' ? payload.location.trim() : '';
+  const deliveryArea = isDeliveryArea(payload.deliveryArea)
+    ? payload.deliveryArea
+    : inferDeliveryAreaFromAddress(location);
 
   return {
     ok: true,
@@ -115,7 +125,8 @@ export function parseJobCardQr(data: string): JobCardImportResult {
       fulfilmentType: isFulfilmentType(payload.fulfilmentType)
         ? payload.fulfilmentType
         : job.fulfilmentType,
-      location: typeof payload.location === 'string' ? payload.location.trim() : '',
+      deliveryArea,
+      location,
       amountCents: Number.isInteger(payload.amountCents)
         ? Number(payload.amountCents)
         : 0,
