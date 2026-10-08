@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import { inferDeliveryAreaFromAddress } from '../src/domain/deliveryAreas';
+import { parseOrderItemsFromSourcePages } from '../src/features/jobCards/orderItemImport';
 import {
   parsePaperJobCardPages,
   parsePaperJobCardText,
@@ -258,4 +259,68 @@ assert.equal(
   'Other',
 );
 
-console.log('Paper parser and delivery-area regression tests passed.');
+
+
+const itemPages = [
+  {
+    pageNumber: 1,
+    capturedAt: '2026-10-08T00:00:00.000Z',
+    rawText: `
+Description
+SMR027 - Cone Lip Large
+5
+R289.34
+ANT017B - Classic Half Pot Small
+20
+R94.01
+Disc %
+VAT %
+`,
+  },
+  {
+    pageNumber: 2,
+    capturedAt: '2026-10-08T00:01:00.000Z',
+    rawText: `
+P2P003 - Angel on Elbows
+3
+R115.73
+DF - Delivery Fee
+1
+R500.00
+BALANCE DUE
+R14,303.88
+`,
+  },
+];
+
+const parsedItems = parseOrderItemsFromSourcePages(itemPages);
+assert.deepEqual(
+  parsedItems.map((item) => ({
+    code: item.productCode,
+    description: item.description,
+    quantity: item.quantity,
+    page: item.sourcePage,
+  })),
+  [
+    {
+      code: 'SMR027',
+      description: 'Cone Lip Large',
+      quantity: 5,
+      page: 1,
+    },
+    {
+      code: 'ANT017B',
+      description: 'Classic Half Pot Small',
+      quantity: 20,
+      page: 1,
+    },
+    {
+      code: 'P2P003',
+      description: 'Angel on Elbows',
+      quantity: 3,
+      page: 2,
+    },
+  ],
+);
+
+console.log('Paper parser, delivery-area, and order-item regression tests passed.');
