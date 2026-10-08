@@ -71,6 +71,33 @@ export async function saveJobCard(
   const now = new Date().toISOString();
 
   await db.withTransactionAsync(async () => {
+    const areaName = job.deliveryArea.trim();
+
+    if (areaName) {
+      const existingArea = await db.getFirstAsync<{ name: string }>(
+        'SELECT name FROM delivery_areas WHERE LOWER(name) = LOWER(?) LIMIT 1',
+        areaName,
+      );
+
+      if (!existingArea) {
+        await db.runAsync(
+          `
+            INSERT INTO delivery_areas (
+              name,
+              color,
+              text_color,
+              sort_order,
+              is_system,
+              created_at
+            )
+            VALUES (?, '#98A2B3', '#FFFFFF', 900, 0, ?)
+          `,
+          areaName,
+          now,
+        );
+      }
+    }
+
     await db.runAsync(
       `
         INSERT INTO job_cards (
