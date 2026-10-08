@@ -102,4 +102,42 @@ export async function migrateDatabase(db: SQLiteDatabase) {
 
     await db.execAsync('PRAGMA user_version = 3;');
   }
+
+  if (currentVersion < 4) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS job_card_items (
+        id TEXT PRIMARY KEY NOT NULL,
+        job_card_id TEXT NOT NULL,
+        position INTEGER NOT NULL,
+        product_code TEXT NOT NULL,
+        description TEXT NOT NULL,
+        quantity REAL NOT NULL,
+        source_page INTEGER NOT NULL,
+        FOREIGN KEY (job_card_id) REFERENCES job_cards(id) ON DELETE CASCADE,
+        UNIQUE (job_card_id, position)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_job_card_items_job
+        ON job_card_items(job_card_id);
+
+      CREATE TABLE IF NOT EXISTS delivery_allocations (
+        id TEXT PRIMARY KEY NOT NULL,
+        job_card_id TEXT NOT NULL,
+        vehicle_id TEXT NOT NULL CHECK (vehicle_id IN ('vehicle-1', 'vehicle-2')),
+        load_percent INTEGER NOT NULL CHECK (load_percent >= 0 AND load_percent <= 100),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (job_card_id) REFERENCES job_cards(id) ON DELETE CASCADE,
+        UNIQUE (job_card_id, vehicle_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_delivery_allocations_job
+        ON delivery_allocations(job_card_id);
+
+      CREATE INDEX IF NOT EXISTS idx_delivery_allocations_vehicle
+        ON delivery_allocations(vehicle_id);
+
+      PRAGMA user_version = 4;
+    `);
+  }
 }
