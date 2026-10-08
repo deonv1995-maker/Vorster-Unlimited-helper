@@ -1,3 +1,4 @@
+import { inferDeliveryAreaFromAddress } from '../../domain/deliveryAreas';
 import {
   createEmptyJobCard,
   type FulfilmentType,
@@ -581,6 +582,7 @@ export function parsePaperJobCardText(text: string): PaperJobCardImportResult {
   const dateMade = allPrintedDates[0] ?? job.dateMade;
   const customerName = findCustomerName(lines);
   const location = findLocation(lines, customerName);
+  const deliveryArea = inferDeliveryAreaFromAddress(location);
   const deliveryInstructions = findDeliveryInstructions(lines);
   const deliveryFeePercent = findDeliveryFeePercent(normalizedText);
   const amountCents =
@@ -595,8 +597,10 @@ export function parsePaperJobCardText(text: string): PaperJobCardImportResult {
     warnings.push('Customer name under TO was not read. Please check it before saving.');
   }
 
-  if (!location && fulfilmentType === 'Delivery') {
-    warnings.push('Delivery address was not read. Please check Location before saving.');
+  if (fulfilmentType === 'Delivery' && deliveryArea === 'Other') {
+    warnings.push(
+      'Delivery area could not be identified automatically. Please choose the area before saving.',
+    );
   }
 
   if (amountCents === 0) {
@@ -618,6 +622,7 @@ export function parsePaperJobCardText(text: string): PaperJobCardImportResult {
       customerName,
       referenceNumber,
       fulfilmentType,
+      deliveryArea,
       location,
       deliveryInstructions,
       deliveryFeePercent,
