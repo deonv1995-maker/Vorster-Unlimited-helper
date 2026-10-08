@@ -1,4 +1,3 @@
-import DateTimePicker from '@expo/ui/community/datetime-picker';
 import { SQLiteProvider } from 'expo-sqlite';
 import { useMemo, useState } from 'react';
 import {
@@ -13,8 +12,10 @@ import {
   View,
 } from 'react-native';
 
+import { DeliveryCalendarModal } from './src/components/DeliveryCalendarModal';
 import { JobCardEditor } from './src/components/JobCardEditor';
 import { DATABASE_NAME, migrateDatabase } from './src/data/database';
+import { DELIVERY_AREA_CONFIG } from './src/domain/deliveryAreas';
 import {
   createEmptyJobCard,
   type JobCard,
@@ -31,9 +32,8 @@ import { useJobCards } from './src/features/jobCards/useJobCards';
 import { androidTopSystemInset } from './src/ui/systemInsets';
 import {
   formatLocalDate,
-  fromLocalDate,
-  toLocalDate,
   todayLocalDate,
+  type LocalDate,
 } from './src/utils/localDate';
 
 const COLUMN_WIDTHS = {
@@ -41,7 +41,7 @@ const COLUMN_WIDTHS = {
   customerName: 170,
   referenceNumber: 160,
   fulfilmentType: 155,
-  location: 150,
+  deliveryArea: 135,
   amountRand: 120,
   deliveryDate: 140,
   status: 145,
@@ -97,6 +97,7 @@ function PlannerScreen() {
         !normalizedQuery ||
         job.customerName.toLocaleLowerCase('en-ZA').includes(normalizedQuery) ||
         job.referenceNumber.toLocaleLowerCase('en-ZA').includes(normalizedQuery) ||
+        job.deliveryArea.toLocaleLowerCase('en-ZA').includes(normalizedQuery) ||
         job.location.toLocaleLowerCase('en-ZA').includes(normalizedQuery);
 
       if (!matchesQuery) return false;
@@ -120,15 +121,15 @@ function PlannerScreen() {
     [jobs],
   );
 
-  const updateDeliveryDate = async (date: Date | null) => {
-    if (!dateJob || !date) {
+  const updateDeliveryDate = async (date: LocalDate) => {
+    if (!dateJob) {
       setDateJobId(null);
       return;
     }
 
     await saveJob({
       ...dateJob,
-      deliveryDate: toLocalDate(date),
+      deliveryDate: date,
     });
 
     setDateJobId(null);
@@ -167,7 +168,7 @@ function PlannerScreen() {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search customer, job # or location"
+          placeholder="Search customer, job # or area"
           style={styles.searchInput}
           returnKeyType="search"
           clearButtonMode="while-editing"
@@ -253,7 +254,7 @@ function PlannerScreen() {
               <Cell width={COLUMN_WIDTHS.customerName} text="Customer name" header />
               <Cell width={COLUMN_WIDTHS.referenceNumber} text="Job card / Quote #" header />
               <Cell width={COLUMN_WIDTHS.fulfilmentType} text="Delivery / Collection" header />
-              <Cell width={COLUMN_WIDTHS.location} text="Location" header />
+              <Cell width={COLUMN_WIDTHS.deliveryArea} text="Area" header />
               <Cell width={COLUMN_WIDTHS.amountRand} text="Amount R" header />
               <Cell width={COLUMN_WIDTHS.deliveryDate} text="Delivery date" header />
               <Cell width={COLUMN_WIDTHS.status} text="Status" header />
@@ -287,11 +288,19 @@ function PlannerScreen() {
                         text={job.fulfilmentType}
                         onPress={openEditor}
                       />
-                      <Cell
-                        width={COLUMN_WIDTHS.location}
-                        text={job.location || '—'}
-                        onPress={openEditor}
-                      />
+                      {job.fulfilmentType === 'Delivery' ? (
+                        <AreaCell
+                          width={COLUMN_WIDTHS.deliveryArea}
+                          area={job.deliveryArea}
+                          onPress={openEditor}
+                        />
+                      ) : (
+                        <Cell
+                          width={COLUMN_WIDTHS.deliveryArea}
+                          text="—"
+                          onPress={openEditor}
+                        />
+                      )}
                       <Cell
                         width={COLUMN_WIDTHS.amountRand}
                         text={formatRand(job.amountCents)}
@@ -387,6 +396,7 @@ function PlannerScreen() {
           setEditorJob(null);
           setPendingScanPages(undefined);
         }}
+        calendarJobs={jobs}
         onSave={async (job) => {
           await saveJob(job, pendingScanPages);
           setEditorJob(null);
@@ -394,22 +404,46 @@ function PlannerScreen() {
         }}
       />
 
-      {dateJob ? (
-        <DateTimePicker
-          value={dateJob.deliveryDate ? fromLocalDate(dateJob.deliveryDate) : new Date()}
-          mode="date"
-          presentation="dialog"
-          onChange={(event, date) => {
-            if (event.type === 'dismissed') {
-              setDateJobId(null);
-              return;
-            }
-
-            void updateDeliveryDate(date ?? null);
-          }}
-        />
-      ) : null}
+      <DeliveryCalendarModal
+        visible={dateJob !== null}
+        selectedDate={dateJob?.deliveryDate ?? null}
+        jobs={jobs}
+        currentJobId={dateJob?.id}
+        onCancel={() => setDateJobId(null)}
+        onSelectDate={(date) => {
+          void updateDeliveryDate(date);
+        }}
+      />
     </SafeAreaView>
+  );
+}
+
+function AreaCell({
+  width,
+  area,
+  onPress,
+}: {
+  width: number;
+  area: JobCard['deliveryArea'];
+  onPress: () => void;
+}) {
+  const config = DELIVERY_AREA_CONFIG[area];
+
+  return (
+    <Pressable
+      style={[
+        styles.cell,
+        styles.areaCell,
+        { width, backgroundColor: config.color },
+      ]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Delivery area ${area}`}
+    >
+      <Text style={[styles.areaCellText, { color: config.textColor }]}>
+        {area}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -608,6 +642,13 @@ const styles = StyleSheet.create({
   },
   emphasizedCellText: {
     fontWeight: '800',
+  },
+  areaCell: {
+    alignItems: 'center',
+  },
+  areaCellText: {
+    fontSize: 13,
+    fontWeight: '900',
   },
   dateCellText: {
     color: '#175cd3',

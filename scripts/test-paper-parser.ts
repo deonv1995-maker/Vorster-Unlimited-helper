@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 
+import { inferDeliveryAreaFromAddress } from '../src/domain/deliveryAreas';
 import {
   parsePaperJobCardPages,
   parsePaperJobCardText,
@@ -236,4 +237,25 @@ if (flattenedObservedResult.ok) {
   assert.doesNotMatch(flattenedObservedResult.job.location, /VORSTER UNLIMITED TRADING/i);
 }
 
-console.log('Paper parser regression tests passed.');
+assert.equal(
+  inferDeliveryAreaFromAddress('Lynnwood Road, Pretoria'),
+  'Pretoria',
+);
+assert.equal(
+  inferDeliveryAreaFromAddress('Rooihuiskraal, Centurion'),
+  'Centurion',
+);
+assert.equal(
+  inferDeliveryAreaFromAddress('Boksburg, Gauteng'),
+  'East Rand',
+);
+assert.equal(
+  inferDeliveryAreaFromAddress('Meyersdal, Alberton'),
+  'Alberton',
+);
+assert.equal(
+  inferDeliveryAreaFromAddress('Vanderbijlpark, Gauteng'),
+  'Other',
+);
+
+console.log('Paper parser and delivery-area regression tests passed.');
