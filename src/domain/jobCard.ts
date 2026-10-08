@@ -6,12 +6,14 @@ import {
 
 export const JOB_STATUSES = [
   'Pending',
+  'Scheduled',
   'In Production',
+  'In Dispatch',
   'Ready',
   'Delivered',
   'Collected',
   'On Hold',
-  'Cancelled',
+  'Canceled',
 ] as const;
 
 export type JobStatus = (typeof JOB_STATUSES)[number];
