@@ -246,7 +246,11 @@ export function JobCardEditor({
                       <View
                         style={[
                           styles.areaButtonDot,
-                          { backgroundColor: config.color },
+                          {
+                            backgroundColor: selected
+                              ? config.textColor
+                              : config.color,
+                          },
                         ]}
                       />
                       <Text
